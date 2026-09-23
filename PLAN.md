@@ -37,10 +37,10 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 
 | Thành viên | Vai trò dự án (Role) | Trách nhiệm cốt lõi | Trách nhiệm trên GitHub & Artifacts |
 | :--- | :--- | :--- | :--- |
-| **Bảo Phú** *(Lead)* | **Project Lead & System Architect** | Quản lý tiến độ tổng thể, sprint cadence, thiết kế kiến trúc hệ thống, lõi tìm kiếm ngữ nghĩa (`src/search_engine.py`), thiết lập CI/CD. | Repository Maintainer, Project Board (Kanban), Tagging Release `v1.0.0`, Chủ trì Báo cáo W3 & W7. |
-| **Công Phú** | **Data & Retrieval Engineer** | Xây dựng pipeline cào dữ liệu (`src/ingest.py`), chuẩn hóa JSON schema, sinh vector nhúng và quản trị ChromaDB (`src/indexer.py`). | Quản lý nhánh `feat/ingestion`, `feat/vector-db`, quản lý thư mục `data/raw/` và `data/processed/`. |
-| **Kiên** | **Frontend & Integration Engineer** | Phát triển Web Dashboard tương tác bằng Streamlit (`src/app.py`), trực quan hóa dữ liệu, sơ đồ kiến trúc và sơ đồ tư duy. | Quản lý nhánh `feat/ui-dashboard`, tác giả `docs/architecture.png`, `docs/mindmaps/`, `README.md`. |
-| **Đông** | **QA, Ethics & Compliance Lead** | Xây dựng bộ test (`tests/`), đo lường benchmark hiệu năng/MRR, thẩm định pháp lý/đạo đức AI, thư ký ghi biên bản họp tuần. | Reviewer chính cho Pull Requests, chủ trì `reports/ethics_legal_audit.pdf`, quản lý `docs/meeting_minutes/`. |
+| **Nguyễn Phước Bảo Phú** *(Lead)* | **Project Lead & System Architect** | Quản lý tiến độ tổng thể, sprint cadence, thiết kế kiến trúc hệ thống, lõi tìm kiếm ngữ nghĩa (`src/search_engine.py`), thiết lập CI/CD. | Repository Maintainer, Project Board (Kanban), Tagging Release `v1.0.0`, Chủ trì Báo cáo W3 & W7. |
+| **Từ Công Phú** | **Data & Retrieval Engineer** | Xây dựng pipeline cào dữ liệu (`src/ingest.py`), chuẩn hóa JSON schema, sinh vector nhúng và quản trị ChromaDB (`src/indexer.py`). | Quản lý nhánh `feat/ingestion`, `feat/vector-db`, quản lý thư mục `data/raw/` và `data/processed/`. |
+| **Nguyễn Vi Kiên** | **Frontend & Integration Engineer** | Phát triển Web Dashboard tương tác bằng Streamlit (`src/app.py`), trực quan hóa dữ liệu, sơ đồ kiến trúc và sơ đồ tư duy. | Quản lý nhánh `feat/ui-dashboard`, tác giả `docs/architecture.png`, `docs/mindmaps/`, `README.md`. |
+| **Trần Kiện Đông** | **QA, Ethics & Compliance Lead** | Xây dựng bộ test (`tests/`), đo lường benchmark hiệu năng/MRR, thẩm định pháp lý/đạo đức AI, thư ký ghi biên bản họp tuần. | Reviewer chính cho Pull Requests, chủ trì `reports/ethics_legal_audit.pdf`, quản lý `docs/meeting_minutes/`. |
 
 ---
 
