@@ -37,10 +37,10 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 
 | Thành viên | Vai trò dự án (Role) | Trách nhiệm cốt lõi | Trách nhiệm trên GitHub & Artifacts |
 | :--- | :--- | :--- | :--- |
-| **Thành viên 1** *(Lead)* | **Project Lead & System Architect** | Quản lý tiến độ tổng thể, sprint cadence, thiết kế kiến trúc hệ thống, lõi tìm kiếm ngữ nghĩa (`src/search_engine.py`), thiết lập CI/CD. | Repository Maintainer, Project Board (Kanban), Tagging Release `v1.0.0`, Chủ trì Báo cáo W3 & W7. |
-| **Thành viên 2** | **Data & Retrieval Engineer** | Xây dựng pipeline cào dữ liệu (`src/ingest.py`), chuẩn hóa JSON schema, sinh vector nhúng và quản trị ChromaDB (`src/indexer.py`). | Quản lý nhánh `feat/ingestion`, `feat/vector-db`, quản lý thư mục `data/raw/` và `data/processed/`. |
-| **Thành viên 3** | **Frontend & Integration Engineer** | Phát triển Web Dashboard tương tác bằng Streamlit (`src/app.py`), trực quan hóa dữ liệu, sơ đồ kiến trúc và sơ đồ tư duy. | Quản lý nhánh `feat/ui-dashboard`, tác giả `docs/architecture.png`, `docs/mindmaps/`, `README.md`. |
-| **Thành viên 4** | **QA, Ethics & Compliance Lead** | Xây dựng bộ test (`tests/`), đo lường benchmark hiệu năng/MRR, thẩm định pháp lý/đạo đức AI, thư ký ghi biên bản họp tuần. | Reviewer chính cho Pull Requests, chủ trì `reports/ethics_legal_audit.pdf`, quản lý `docs/meeting_minutes/`. |
+| **Bảo Phú** *(Lead)* | **Project Lead & System Architect** | Quản lý tiến độ tổng thể, sprint cadence, thiết kế kiến trúc hệ thống, lõi tìm kiếm ngữ nghĩa (`src/search_engine.py`), thiết lập CI/CD. | Repository Maintainer, Project Board (Kanban), Tagging Release `v1.0.0`, Chủ trì Báo cáo W3 & W7. |
+| **Công Phú** | **Data & Retrieval Engineer** | Xây dựng pipeline cào dữ liệu (`src/ingest.py`), chuẩn hóa JSON schema, sinh vector nhúng và quản trị ChromaDB (`src/indexer.py`). | Quản lý nhánh `feat/ingestion`, `feat/vector-db`, quản lý thư mục `data/raw/` và `data/processed/`. |
+| **Kiên** | **Frontend & Integration Engineer** | Phát triển Web Dashboard tương tác bằng Streamlit (`src/app.py`), trực quan hóa dữ liệu, sơ đồ kiến trúc và sơ đồ tư duy. | Quản lý nhánh `feat/ui-dashboard`, tác giả `docs/architecture.png`, `docs/mindmaps/`, `README.md`. |
+| **Đông** | **QA, Ethics & Compliance Lead** | Xây dựng bộ test (`tests/`), đo lường benchmark hiệu năng/MRR, thẩm định pháp lý/đạo đức AI, thư ký ghi biên bản họp tuần. | Reviewer chính cho Pull Requests, chủ trì `reports/ethics_legal_audit.pdf`, quản lý `docs/meeting_minutes/`. |
 
 ---
 
@@ -57,19 +57,19 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 1: ĐẶC TẢ BÀI TOÁN & THIẾT LẬP DỰ ÁN (DESIGN STEPS 1–2)
 *Mục tiêu: Thành lập nhóm, định hình phạm vi bài toán, phân rã yêu cầu môn học CO2001 và thiết lập môi trường kỹ thuật.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - Khởi tạo cấu trúc repository chuẩn trên GitHub (`github.com/HCMUT-Fus/hcmut-ailib`).
   - Thiết lập quy tắc bảo vệ nhánh (`main`, `develop`), cấu hình GitHub Project Board (Kanban).
   - Soạn thảo quy chuẩn đóng góp, template Pull Request (`.github/pull_request_template.md`) và Issue Templates (`.github/ISSUE_TEMPLATE/`).
-- **Thành viên 2 (Data):**
+- **Công Phú (Data):**
   - Nghiên cứu tài liệu arXiv API (query syntax, category taxonomy: `cs.AI`, `cs.CL`, `cs.CV`, rate-limiting 3s/request).
   - Xác định schema cho tập metadata 1,000 bài báo: `title`, `abstract`, `authors`, `doi`, `categories`, `published_date`, `pdf_url`.
   - Khởi tạo danh sách phụ thuộc bước đầu trong `requirements.txt`.
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Soạn thảo bản mô tả dự án và hướng dẫn thiết lập môi trường trong `README.md`.
   - Khảo sát các mẫu giao diện tìm kiếm tài liệu học thuật (Semantic Scholar, arXiv Explorer) để lên ý tưởng UI.
   - Phác thảo wireframe sơ bộ các màn hình chức năng của ứng dụng Streamlit.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - Soạn thảo biểu mẫu ghi nhận biên bản cuộc họp nhóm tại `docs/meeting_minutes/week01_meeting.md`.
   - Thiết lập môi trường kiểm thử ảo bằng `pytest`, cấu hình cấu trúc thư mục `tests/`.
   - Lập checklist các tiêu chuẩn chất lượng đồ án theo đề cương học phần CO2001.
@@ -83,17 +83,17 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 2: THIẾT KẾ Ý TƯỞNG, BRAINSTORMING & KIẾN TRÚC HỆ THỐNG (DESIGN STEPS 3–5)
 *Mục tiêu: Ứng dụng quy trình Think-Pair-Share (TPS), xây dựng Concept Mindmaps và hoàn thiện sơ đồ khối kiến trúc kỹ thuật.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - Thống nhất kiến trúc 4 tầng: *Ingestion Layer -> Storage/Vector Index Layer -> Core Retrieval Engine -> Presentation Layer*.
   - Định nghĩa interface lập trình và kiểu dữ liệu trao đổi giữa các file trong `src/` (typing, dataclasses).
   - Cấu hình workflow tự động kiểm tra cú pháp trên GitHub Actions (`.github/workflows/ci.yml`).
-- **Thành viên 2 (Data):**
+- **Công Phú (Data):**
   - Viết script thử nghiệm kết nối arXiv API bằng Python (`urllib` / `requests` / `feedparser`).
   - Xử lý các trường hợp ngoại lệ: bài báo không có DOI, tên tác giả có ký tự đặc biệt, định dạng ngày tháng ISO 8601.
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Tổng hợp nội dung các phiên thảo luận nhóm, thiết kế sơ đồ tư duy (Concept Maps) và xuất vào `docs/mindmaps/`.
   - Vẽ sơ đồ khối kỹ thuật chi tiết của hệ thống (Engineering Block Diagram) và lưu thành `docs/architecture.png`.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - Lập Ma trận Đánh giá Khả thi (Feasibility Decision Matrix) so sánh giữa Cloud LLM vs. Inverted Index vs. Local Vector DB.
   - Xây dựng kế hoạch kiểm thử tự động (CI Smoke Test Plan).
   - Biên bản họp: `docs/meeting_minutes/week02_meeting.md`.
@@ -108,18 +108,18 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 3: TRIỂN KHAI THU THẬP DỮ LIỆU & BÁO CÁO ĐỀ CƯƠNG (DESIGN STEP 6 — MILESTONE 1: OUTLINE REPORT)
 *Mục tiêu: Đóng gói tập dữ liệu chuẩn 1,000 bài báo arXiv, hoàn thành và bảo vệ Báo cáo Đề cương dự án.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - Chủ trì soạn thảo, biên tập và tổng hợp Báo cáo Đề cương Dự án: `reports/outline_report.pdf`.
   - Chuẩn bị slide thuyết trình bảo vệ đề cương trước giảng viên; điều phối buổi phản biện thử nghiệm nội bộ.
   - Review code của nhánh `feat/ingestion`.
-- **Thành viên 2 (Data):**
+- **Công Phú (Data):**
   - Hoàn thiện mã nguồn `src/ingest.py`: tự động hóa thu thập 1,000 bài báo arXiv theo các danh mục trọng điểm (`cs.AI`, `cs.LG`, `cs.CL`, `cs.IR`).
   - Chuẩn hóa và làm sạch văn bản, lưu trữ kết quả đầu ra tại `data/raw/arxiv_sample_1000.json`.
   - Đảm bảo cơ chế sleep/backoff tuân thủ quy định truy vấn của arXiv API (tối đa 1 request / 3 giây).
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Đóng góp nội dung chương "Phân tích Yêu cầu Người dùng & Giao diện Dự kiến" vào Báo cáo Đề cương.
   - Dựng khung layout Streamlit với các tab điều hướng cơ bản trong `src/app.py`.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - Xây dựng bộ kiểm thử tính toàn vẹn và định dạng dữ liệu trong `tests/test_ingest.py` (kiểm tra 1,000 bản ghi, định dạng schema, không trùng lặp `id`).
   - Rà soát format, trích dẫn tài liệu tham khảo theo chuẩn IEEE/ACM và xuất bản bản PDF cuối cùng của báo cáo đề cương.
   - Biên bản họp: `docs/meeting_minutes/week03_meeting.md`.
@@ -135,18 +135,18 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 4: VECTOR EMBEDDING, CHROMA INDEXING & ĐÁNH GIÁ ĐẠO ĐỨC/PHÁP LÝ (MILESTONE 2: ETHICS & LEGAL AUDIT)
 *Mục tiêu: Hoàn tất việc tạo vector nhúng cục bộ vào ChromaDB và nộp Báo cáo phân tích Đạo đức & Pháp lý kỹ thuật.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - Đánh giá và tích hợp mô hình `all-MiniLM-L6-v2` thông qua thư viện `sentence-transformers`.
   - Cập nhật workflow CI: tự động chạy `pytest tests/test_ingest.py` mỗi khi có Pull Request vào nhánh `develop`.
-  - Hỗ trợ TV4 rà soát cơ sở pháp lý về quyền tác giả đối với phần mềm nguồn mở theo Luật CNTT Việt Nam.
-- **Thành viên 2 (Data):**
+  - Hỗ trợ Đông rà soát cơ sở pháp lý về quyền tác giả đối với phần mềm nguồn mở theo Luật CNTT Việt Nam.
+- **Công Phú (Data):**
   - Triển khai `src/indexer.py`: nạp dữ liệu từ `arxiv_sample_1000.json`, kết hợp trường `title` và `abstract` để sinh vector nhúng (384 dimensions).
   - Khởi tạo và cấu hình cơ sở dữ liệu vector ChromaDB ở chế độ Persistent Local Client, lưu tại `data/processed/vector_index/`.
   - Tối ưu kích thước batching để việc sinh vector hoàn tất trong dưới 3 phút trên CPU thường.
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Thiết kế các widget tương tác trên giao diện: khung nhập câu hỏi tự nhiên, thanh trượt chọn số lượng kết quả (Top-K: 1-20), bộ lọc năm và danh mục arXiv.
   - Định nghĩa component thẻ hiển thị bài báo (Paper Card) với đầy đủ thông tin: Tiêu đề, Tác giả, Abstract thu gọn, Link DOI/PDF.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - **Chủ trì nghiên cứu và soạn thảo Báo cáo Đạo đức & Pháp lý (`reports/ethics_legal_audit.pdf`):**
     - Phân tích quyền sở hữu trí tuệ đối với dữ liệu bài báo mở (Open Access, giấy phép arXiv non-exclusive distribution license, Creative Commons CC-BY).
     - Đánh giá sự tuân thủ các quy định của **Luật Công nghệ Thông tin (2006)** và **Luật Sở hữu Trí tuệ Việt Nam**.
@@ -164,17 +164,17 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 5: LÕI TÌM KIẾM NGỮ NGHĨA & BỘ KIỂM THỬ RETRIEVAL BENCHMARK (DESIGN STEP 7A)
 *Mục tiêu: Hiện thực hóa giải thuật tính độ tương đồng Cosine, logic xếp hạng và xây dựng bộ 30 truy vấn benchmark chuẩn.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - Phát triển `src/search_engine.py`: tiếp nhận chuỗi truy vấn ngôn ngữ tự nhiên từ người dùng, nhúng câu truy vấn sang vector không gian 384 chiều.
   - Cài đặt thuật toán đo khoảng cách tương đồng Cosine (Cosine Similarity) kết hợp truy vấn gần nhất (Approximate Nearest Neighbors) trong ChromaDB.
   - Xây dựng bộ lọc kết hợp siêu dữ liệu (Metadata Filtering: lọc theo khoảng thời gian xuất bản, lọc theo category hoặc tác giả).
-- **Thành viên 2 (Data):**
+- **Công Phú (Data):**
   - Hỗ trợ xây dựng hàm tính điểm liên quan chuẩn hóa (Normalized Relevance Score) đưa về thang điểm `[0, 1]` hoặc phần trăm độ khớp.
   - Xây dựng tính năng sinh trích dẫn học thuật tự động cho từng bài báo (định dạng BibTeX, APA, IEEE).
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Kết nối giao diện tìm kiếm trong `src/app.py` với backend `src/search_engine.py`.
   - Bổ sung hiệu ứng tải (Loading spinner), xử lý trường hợp không tìm thấy kết quả hoặc truy vấn rỗng.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - **Xây dựng bộ kiểm thử `tests/test_retrieval.py`:**
     - Soạn thảo tập 30 truy vấn mẫu (Benchmark Queries) đại diện cho các chủ đề nghiên cứu (ví dụ: *"transfer learning in medical imaging"*, *"low resource neural machine translation"*).
     - Gán nhãn thủ công danh sách các bài báo thực sự liên quan trong tập 1,000 bài (Ground Truth).
@@ -191,18 +191,18 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 6: PHÁT TRIỂN GIAO DIỆN STREAMLIT & TRỢ LÝ NGHIÊN CỨU (DESIGN STEP 7B)
 *Mục tiêu: Hoàn thiện ứng dụng web tương tác hoàn chỉnh, tích hợp tính năng trợ lý nghiên cứu và kiểm thử trải nghiệm người dùng.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - Tối ưu hóa hiệu năng ứng dụng Streamlit: cấu hình cơ chế lưu trữ đệm (`st.cache_resource` cho mô hình embedding và ChromaDB connection) giúp giảm độ trễ truy vấn xuống **< 1.0 giây**.
   - Xây dựng tính năng "Find Similar Papers" (tìm các bài báo có nội dung tương đồng với bài đang xem).
-- **Thành viên 2 (Data):**
+- **Công Phú (Data):**
   - Rà soát tính ổn định của dữ liệu, viết hàm trích xuất các từ khóa chủ chốt (Key Takeaways / Extractive Keywords) từ phần tóm tắt để hỗ trợ người đọc.
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Hoàn thiện giao diện người dùng chuyên nghiệp trong `src/app.py`:
     - Thanh tìm kiếm trung tâm trực quan với gợi ý từ khóa.
     - Bộ lọc đa tiêu chí linh hoạt ở sidebar.
     - Hiển thị kết quả dạng lưới/thẻ có điểm tương đồng, badge chuyên ngành arXiv, nút "Xem Abstract đầy đủ", nút "Tải PDF", nút "Sao chép BibTeX".
     - Thiết kế giao diện responsive, trực quan, hỗ trợ Light & Dark theme.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - Thực hiện kiểm thử đầu cuối thủ công (Manual E2E Testing) trên nhiều trình duyệt (Chrome, Firefox, Edge).
   - Ghi nhận các vấn đề về hiển thị, lỗi biên (edge cases) và tạo GitHub Issues để nhóm xử lý.
   - Đo lường thời gian phản hồi thực tế của giao diện người dùng.
@@ -217,19 +217,19 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 7: TỔNG KẾT ĐÁNH GIÁ HIỆU NĂNG & NỘP BÁO CÁO 80% (DESIGN STEP 8 — MILESTONE 3: FINAL EVALUATION REPORT)
 *Mục tiêu: Đo lường toàn diện các chỉ số thực nghiệm, tinh chỉnh hệ thống và nộp Báo cáo Đánh giá Tổng kết 80% trọng số.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - **Chủ trì biên soạn Báo cáo Đánh giá Tổng kết (`reports/final_evaluation.pdf`)** — Báo cáo trọng số 80% của học phần:
     - Tổng hợp kiến trúc kỹ thuật và mức độ thỏa mãn các mục tiêu ban đầu.
     - Đánh giá khả năng mở rộng (Scalability) và phân tích hạn chế của hệ thống.
   - Tạo Git Tag Release phiên bản `v1.0.0` trên GitHub.
-- **Thành viên 2 (Data):**
+- **Công Phú (Data):**
   - Thực hiện thực nghiệm so sánh đối chứng (A/B Comparison): Tìm kiếm từ khóa truyền thống (Lexical Keyword Matching) vs. Tìm kiếm vector ngữ nghĩa (HCMUT-AILib).
   - Thu thập biểu đồ minh họa không gian vector nhúng (t-SNE hoặc PCA) phục vụ báo cáo.
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Tiến hành khảo sát trải nghiệm người dùng (Usability Testing) với 10-15 sinh viên Bách Khoa.
   - Tổng hợp số liệu khảo sát (độ hài lòng, tính dễ sử dụng theo chuẩn System Usability Scale - SUS) để đưa vào báo cáo.
   - Cập nhật tài liệu hướng dẫn sử dụng vào `README.md`.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - Tổng hợp toàn bộ số liệu đo lường kỹ thuật:
     - Bảng đo thời gian phản hồi truy vấn (trung bình 0.35s, tối đa 0.85s, đạt chỉ tiêu < 1.5s).
     - Bảng đo độ chính xác: MRR đạt **> 0.7**, Precision@5 đạt **> 80%**.
@@ -247,17 +247,17 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### TUẦN 8: ĐÓNG GÓI SẢN PHẨM, TÀI LIỆU HÓA & BẢO VỆ ĐỒ ÁN (FINAL DEFENSE & RELEASE)
 *Mục tiêu: Đóng gói tài liệu bàn giao, ghi hình video demo dự phòng, hoàn thiện slide và bảo vệ xuất sắc trước hội đồng.*
 
-- **Thành viên 1 (Lead & Architect):**
+- **Bảo Phú (Lead & Architect):**
   - Khóa chính xác các phiên bản thư viện trong `requirements.txt`.
   - Tổng hợp slide thuyết trình bảo vệ đồ án cuối kỳ trước Hội đồng giảng viên Khoa KH&KT Máy tính.
   - Điều phối phân chia thuyết trình và kịch bản trả lời vấn đáp (Q&A Defense Script).
-- **Thành viên 2 (Data):**
+- **Công Phú (Data):**
   - Thực hiện quy trình kiểm tra tính tái lập (Reproducibility Test): sao chép mã nguồn sang một máy tính mới hoàn toàn và chạy kiểm thử từ bước cào dữ liệu đến khởi chạy ứng dụng.
   - Đóng gói file mô tả cấu trúc dữ liệu metadata.
-- **Thành viên 3 (Frontend):**
+- **Kiên (Frontend):**
   - Hoàn thiện toàn diện `README.md` theo chuẩn quốc tế: huy hiệu CI, ảnh chụp giao diện, sơ đồ kiến trúc, GIF mô phỏng thao tác, hướng dẫn cài đặt 3 bước bằng lệnh `pip`, danh sách tác giả.
   - Quay video demo chất lượng cao (3-5 phút) thuyết minh các tính năng chính làm kịch bản dự phòng khi bảo vệ.
-- **Thành viên 4 (QA & Ethics):**
+- **Đông (QA & Ethics):**
   - Hoàn tất và lưu trữ toàn bộ 8 biên bản họp nhóm tuần tại `docs/meeting_minutes/`.
   - Rà soát sự toàn vẹn của giấy phép mã nguồn mở `LICENSE` (GNU GPLv3).
   - Lập Bảng tự đánh giá và Đánh giá chéo đóng góp thành viên (Peer Assessment Matrix).
@@ -277,7 +277,7 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 > - **C (Consulted):** Người đóng góp ý kiến chuyên môn và phối hợp.
 > - **I (Informed):** Người được thông báo tiến độ và kết quả.
 
-| Hạng mục / Artifact trong Repository | TV1 (Lead) | TV2 (Data) | TV3 (Frontend) | TV4 (QA/Legal) |
+| Hạng mục / Artifact trong Repository | Bảo Phú (Lead) | Công Phú (Data) | Kiên (Frontend) | Đông (QA/Legal) |
 | :--- | :---: | :---: | :---: | :---: |
 | **Quản trị Repo, Kanban Board & CI/CD** (`.github/`) | **A / R** | I | I | C |
 | **Đặc tả Schema & Cào dữ liệu** (`src/ingest.py`, `data/raw/`) | C | **A / R** | I | C |
@@ -299,7 +299,7 @@ Nhóm gồm 4 thành viên, tuân thủ nguyên tắc cân bằng khối lượn
 ### 5.1. Quy trình Phân nhánh Git (Branching Model)
 - `main`: Nhánh sản phẩm chính thức, được bảo vệ nghiêm ngặt (Protected branch). Chỉ cập nhật thông qua Pull Request từ `develop` sau khi vượt qua tất cả kiểm thử.
 - `develop`: Nhánh tích hợp thường trực trong suốt quá trình phát triển các sprint.
-- `feat/<tên-thành-viên>-<tên-chức-năng>`: Nhánh tính năng cá nhân (ví dụ: `feat/tv2-arxiv-ingestion`, `feat/tv3-streamlit-dashboard`).
+- `feat/<tên-thành-viên>-<tên-chức-năng>`: Nhánh tính năng cá nhân (ví dụ: `feat/congphu-arxiv-ingestion`, `feat/kien-streamlit-dashboard`).
 - `fix/<tên-lỗi>`: Nhánh xử lý sự cố khẩn cấp (ví dụ: `fix/chroma-dimension-error`).
 
 ### 5.2. Tiêu chuẩn Commit Message (Conventional Commits)
@@ -314,7 +314,7 @@ Mỗi commit message phải tuân thủ nghiêm ngặt định dạng:
 ### 5.3. Quy trình Kiểm duyệt Mã nguồn (Code Review & Pull Requests)
 - Không commit trực tiếp lên `main` và `develop`.
 - Mỗi Pull Request phải gắn nhãn (Label), liên kết đến GitHub Issue tương ứng.
-- Phải có tối thiểu **1 thành viên khác (TV4 đối với kiểm thử/chất lượng hoặc TV1 đối với kiến trúc) phê duyệt (Approve)** và CI pipeline chạy thành công trước khi merge.
+- Phải có tối thiểu **1 thành viên khác (Đông đối với kiểm thử/chất lượng hoặc Bảo Phú đối với kiến trúc) phê duyệt (Approve)** và CI pipeline chạy thành công trước khi merge.
 - Sử dụng hình thức `Squash and merge` để giữ lịch sử Git trên `develop` và `main` được trong sạch.
 
 ### 5.4. Lịch họp & Giao tiếp Nhóm
@@ -323,7 +323,7 @@ Mỗi commit message phải tuân thủ nghiêm ngặt định dạng:
   1. Mỗi thành viên báo cáo 3 câu hỏi: *Đã làm được gì tuần qua? Sẽ làm gì tuần tới? Đang gặp khó khăn/nghẽn ở đâu (Blockers)?*
   2. Rà soát tiến độ so với các mốc nộp báo cáo (W3, W4, W7, W8).
   3. Phân công chi tiết và thống nhất giải pháp kỹ thuật.
-- **Biên bản họp:** Thư ký (TV4) có trách nhiệm cập nhật biên bản bằng Markdown vào thư mục `docs/meeting_minutes/weekXX_meeting.md` trong vòng 24 giờ sau cuộc họp.
+- **Biên bản họp:** Thư ký (Đông) có trách nhiệm cập nhật biên bản bằng Markdown vào thư mục `docs/meeting_minutes/weekXX_meeting.md` trong vòng 24 giờ sau cuộc họp.
 
 ---
 
