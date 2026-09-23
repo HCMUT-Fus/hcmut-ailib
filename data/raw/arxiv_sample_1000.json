@@ -1,0 +1,8 @@
+[
+  {
+    "title": "Sample paper",
+    "abstract": "A tiny sample abstract for schema validation.",
+    "authors": ["Jane Doe", "John Doe"],
+    "doi": "10.1000/sample-doi"
+  }
+]
