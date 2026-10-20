@@ -1,0 +1,246 @@
+{
+ "semantic": {
+  "mrr": 0.9111111111111111,
+  "p@5": 0.3266666666666667,
+  "recall@10": 1.0,
+  "n_queries": 30
+ },
+ "bm25": {
+  "mrr": 0.6929100529100529,
+  "p@5": 0.20666666666666667,
+  "recall@10": 0.7440476190476191,
+  "n_queries": 30
+ },
+ "p@5_ceiling": 0.36666666666666664,
+ "per_query": [
+  {
+   "qid": "Q01",
+   "query": "finding useful social media messages during natural disasters like floods",
+   "n_relevant": 3,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q02",
+   "query": "recognizing person and organization names when very little labelled training text is available",
+   "n_relevant": 1,
+   "rr_semantic": 0.5,
+   "rr_bm25": 0.0
+  },
+  {
+   "qid": "Q03",
+   "query": "why last-layer features of deep classifiers converge to class means at the end of training",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q04",
+   "query": "better ways to evaluate the impact of scientific publications than counting citations",
+   "n_relevant": 3,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.1111111111111111
+  },
+  {
+   "qid": "Q05",
+   "query": "transformer neural networks for spreadsheet-style data with categorical columns",
+   "n_relevant": 2,
+   "rr_semantic": 0.5,
+   "rr_bm25": 0.25
+  },
+  {
+   "qid": "Q06",
+   "query": "how humans learn to decide when to stop deliberating and act",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.0
+  },
+  {
+   "qid": "Q07",
+   "query": "does the quality of human reference translations matter for automatic translation evaluation",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q08",
+   "query": "jointly grouping documents and discovering their topics without supervision",
+   "n_relevant": 5,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.0
+  },
+  {
+   "qid": "Q09",
+   "query": "multiple LLM agents with retrieval to extract information from business documents",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q10",
+   "query": "automatically extracting attribute-value data from online shop web pages",
+   "n_relevant": 4,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q11",
+   "query": "probabilistic phrase-based translation between English and Indian languages",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q12",
+   "query": "blurring sensitive objects in real-time video broadcasts to protect privacy",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q13",
+   "query": "computational analysis of Sanskrit sentence meaning using traditional Indian grammar theory",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.2
+  },
+  {
+   "qid": "Q14",
+   "query": "making LLM-based click-through rate prediction faster without losing accuracy",
+   "n_relevant": 2,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.14285714285714285
+  },
+  {
+   "qid": "Q15",
+   "query": "using knowledge graphs as extra information to improve product recommendations",
+   "n_relevant": 7,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q16",
+   "query": "reducing the quadratic cost of self-attention with local windows of different sizes",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q17",
+   "query": "mixing two languages within one conversation and its implications for NLP",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.0
+  },
+  {
+   "qid": "Q18",
+   "query": "predicting how long a statement in a text stays true given surrounding context",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.5
+  },
+  {
+   "qid": "Q19",
+   "query": "literature survey of methods for automatically producing short summaries of documents",
+   "n_relevant": 2,
+   "rr_semantic": 0.5,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q20",
+   "query": "sequential decision making under uncertainty with parameterized deterministic lookahead policies",
+   "n_relevant": 1,
+   "rr_semantic": 0.3333333333333333,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q21",
+   "query": "learning a robot's navigation cost function from expert demonstrations",
+   "n_relevant": 1,
+   "rr_semantic": 0.5,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q22",
+   "query": "combining reinforcement learning with heuristics for vehicle routing on graph edges",
+   "n_relevant": 3,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q23",
+   "query": "reinforcement learning to correct forecasts of chaotic dynamical systems with observations",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q24",
+   "query": "augmented reality and AI assistance for robot-assisted surgical training",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q25",
+   "query": "adapting vision-language pretrained models for retrieval in multimodal conversations",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.25
+  },
+  {
+   "qid": "Q26",
+   "query": "hidden trigger attacks on neural networks controlled through natural language instructions",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q27",
+   "query": "poisoning training observations so that an RL agent misbehaves only in specific states",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q28",
+   "query": "transferring a classifier from a source domain to an unlabeled target domain while keeping features discriminative",
+   "n_relevant": 6,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  },
+  {
+   "qid": "Q29",
+   "query": "efficient linear-complexity attention for next-item recommendation from user histories",
+   "n_relevant": 1,
+   "rr_semantic": 1.0,
+   "rr_bm25": 0.3333333333333333
+  },
+  {
+   "qid": "Q30",
+   "query": "benchmark testing whether large language models can analyze financial data",
+   "n_relevant": 2,
+   "rr_semantic": 1.0,
+   "rr_bm25": 1.0
+  }
+ ],
+ "latency": {
+  "n": 150,
+  "mean_s": 0.013595221333137791,
+  "median_s": 0.013328199998795753,
+  "p95_s": 0.017087200001697056,
+  "max_s": 0.022220199996809242
+ },
+ "startup_s": 15.27918470000077,
+ "rss_mb": {
+  "before_load": 28.5390625,
+  "after_queries": 577.078125
+ },
+ "index_build_s": 51.45675230000052,
+ "environment": {
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "Intel64 Family 6 Model 140 Stepping 2, GenuineIntel",
+  "cpu_count": 4
+ }
+}

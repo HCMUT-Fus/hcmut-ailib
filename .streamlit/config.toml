@@ -1,0 +1,7 @@
+[browser]
+# Privacy: do not send anonymous usage statistics to Streamlit (see ethics audit, item P4).
+gatherUsageStats = false
+
+[client]
+# Hide the "Deploy" button; this is a local-only app.
+toolbarMode = "viewer"

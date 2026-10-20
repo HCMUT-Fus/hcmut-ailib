@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Syntax & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m compileall -q src tests reports/build_reports.py
+      - run: pip install ruff && ruff check src tests --select E9,F
+
+  test:
+    name: Tests & retrieval benchmark
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies (CPU-only PyTorch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-all-MiniLM-L6-v2
+      - name: Ingestion tests
+        run: pytest -q tests/test_ingest.py tests/test_assistant.py
+      - name: Build vector index
+        run: python -m src.indexer
+      - name: Retrieval benchmark (MRR > 0.7, latency < 1.5 s)
+        run: pytest -q -s tests/test_retrieval.py
+      - name: Streamlit UI tests
+        run: pytest -q tests/test_app.py

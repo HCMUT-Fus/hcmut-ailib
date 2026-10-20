@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Local caches (pip, Hugging Face models, temp files)
+.cache/
+
+# Generated vector store: rebuild with `python -m src.indexer`
+data/processed/vector_index/*
+!data/processed/vector_index/.gitkeep
+
+# Report build intermediates
+reports/src/*.html
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,16 @@
+# Python 3.12 (tested on Windows 11 and Ubuntu CI). CPU-only PyTorch keeps the install small:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+torch==2.14.1
+sentence-transformers==6.1.0
+transformers==5.20.2
+chromadb==1.5.9
+streamlit==1.66.0
+numpy==2.5.4
+matplotlib==3.11.2
+psutil==7.2.2
+Markdown==3.11.2
+
+# Development / testing
+pytest==9.1.1
+ruff==0.17.1
