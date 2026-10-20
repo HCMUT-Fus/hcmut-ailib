@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Semantic search over the ChromaDB index.
 
 A query is embedded with the same model used at indexing time, and ChromaDB's
@@ -140,3 +141,6 @@ class SearchEngine:
             if len(results) == top_k:
                 break
         return results
+=======
+#TODO
+>>>>>>> 6c901f69c5b7c0c884880974beef7e916b454e8c

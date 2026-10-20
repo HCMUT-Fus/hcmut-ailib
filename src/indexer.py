@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Embed the arXiv sample with all-MiniLM-L6-v2 and store it in ChromaDB.
 
 Each paper is embedded from ``"<title>. <abstract>"`` into a 384-dimensional,
@@ -95,3 +96,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+=======
+#TODO
+>>>>>>> 6c901f69c5b7c0c884880974beef7e916b454e8c
