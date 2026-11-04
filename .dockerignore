@@ -1,0 +1,10 @@
+.git
+.venv
+venv
+.cache
+.pytest_cache
+.ruff_cache
+__pycache__
+data/processed/vector_index/*
+*.docx
+reports/*.pdf

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """Fetch open metadata for 1,000 arXiv papers and save it as normalized JSON.
 
 The sample is stratified so that every (category, year) cell contributes the
@@ -168,6 +167,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-=======
-#TODO
->>>>>>> 6c901f69c5b7c0c884880974beef7e916b454e8c

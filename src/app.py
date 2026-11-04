@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """HCMUT-AILib Streamlit dashboard. Run with ``streamlit run src/app.py``."""
 
 from __future__ import annotations
@@ -73,12 +72,12 @@ def render_card(result: SearchResult, key_prefix: str) -> None:
             st.write(paper.abstract)
 
         links = st.columns(4)
-        links[0].link_button("📄 PDF", paper.pdf_url, use_container_width=True)
-        links[1].link_button("🔗 arXiv page", paper.abs_url, use_container_width=True)
+        links[0].link_button("📄 PDF", paper.pdf_url, width="stretch")
+        links[1].link_button("🔗 arXiv page", paper.abs_url, width="stretch")
         if paper.doi:
-            links[2].link_button("DOI", f"https://doi.org/{paper.doi}", use_container_width=True)
+            links[2].link_button("DOI", f"https://doi.org/{paper.doi}", width="stretch")
         if links[3].button("🔍 Find similar", key=f"{key_prefix}-sim-{paper.id}",
-                           use_container_width=True):
+                           width="stretch"):
             st.session_state.similar_to = paper.id
             st.toast("Open the “Similar papers” tab to see the results.")
 
@@ -191,6 +190,3 @@ def main() -> None:
 
 
 main()
-=======
-#TODO
->>>>>>> 6c901f69c5b7c0c884880974beef7e916b454e8c
