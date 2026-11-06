@@ -34,7 +34,9 @@ HCMUT-AILib is a local-first, zero-cost semantic search engine and research assi
 
 ```bash
 git clone https://github.com/HCMUT-Fus/hcmut-ailib.git && cd hcmut-ailib
+pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
+python -m src.indexer
 streamlit run src/app.py
 ```
 

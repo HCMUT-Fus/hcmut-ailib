@@ -39,32 +39,71 @@ Measured on a 2-core Intel i3-1115G4 laptop with 8 GB RAM, using a 30-query benc
 The benchmark's relevance labels are a first pass that the QA lead still has to review.
 See the [final evaluation report](reports/final_evaluation.pdf) for the method and its limitations.
 
-## Quick start
+## Quick start (Windows)
 
-Requires Python 3.12 and about 1.5 GB of disk space.
+**Prerequisites:**
+- **Windows 10 / 11** (64-bit)
+- **Git** and **Python 3.12** ([download from python.org](https://www.python.org/downloads/) — tick **"Add python.exe to PATH"** during setup)
+- ~**1.5 GB** of free disk space and an internet connection for the initial install and one-time model download (~90 MB)
 
-```bash
-# 1. Install (CPU-only PyTorch, then the rest)
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
+Open **PowerShell** or **Command Prompt (CMD)** and run:
 
-# 2. Build the vector index from the included dataset (~1 min; downloads the 90 MB model once)
-python -m src.indexer
+```powershell
+# 1. Clone the repository
+git clone https://github.com/HCMUT-Fus/hcmut-ailib.git
+cd hcmut-ailib
 
-# 3. Run the app, then open http://localhost:8501
-streamlit run src/app.py
+# 2. Create an isolated Python 3.12 virtual environment
+#    (If you have multiple Python versions installed, use: py -3.12 -m venv .venv)
+python -m venv .venv
+
+# 3. Install dependencies (CPU-only PyTorch first, then pinned requirements)
+.venv\Scripts\python -m pip install --upgrade pip
+.venv\Scripts\pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+.venv\Scripts\pip install -r requirements.txt
+
+# 4. Build the local vector index from the included dataset
+#    (Required once after cloning; takes ~1 min and downloads the 90 MB model once)
+.venv\Scripts\python -m src.indexer
+
+# 5. Run the web app, then open http://localhost:8501
+.venv\Scripts\streamlit run src/app.py
 ```
+
+> **Tip — Activating `.venv` (optional) & other shells:**
+> - Calling `.venv\Scripts\python` and `.venv\Scripts\streamlit` directly (as above) works in **PowerShell** and **CMD** without changing PowerShell's `ExecutionPolicy`.
+> - If you prefer activating the environment first:
+>   - **PowerShell:** `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass; .\.venv\Scripts\Activate.ps1`
+>   - **CMD:** `.venv\Scripts\activate.bat`
+>   - **Git Bash:** `source .venv/Scripts/activate` (or replace `\` with `/` in paths, e.g. `.venv/Scripts/python`)
+>   - **Linux / macOS:** replace `.venv\Scripts\` with `.venv/bin/`
 
 <details>
-<summary>Other commands</summary>
+<summary>Other commands (tests, benchmark, reports)</summary>
 
-```bash
-python -m src.ingest            # re-download the 1,000-paper sample from arXiv (~2 min, 3 s between requests)
-python -m src.evaluate          # benchmark: MRR, P@5, latency, memory, PCA figure
-pytest -q                       # 31 tests (retrieval and UI tests need the index)
-python reports/build_reports.py # rebuild the PDF reports (needs Microsoft Edge)
-python docs/draw_architecture.py
+```powershell
+# Stop the Streamlit app (Ctrl+C) before running tests on 8 GB RAM laptops (~577 MB RSS per process)
+.venv\Scripts\python -m pytest -q                             # run all 31 tests (~30 s; requires the index from step 4)
+.venv\Scripts\python -m pytest -q -s tests/test_retrieval.py  # run benchmark tests and print MRR / P@5
+.venv\Scripts\python -m ruff check src tests --select E9,F    # syntax & lint check (same as CI)
+.venv\Scripts\python -m src.evaluate                          # full benchmark: MRR, P@5, latency, memory, PCA figure
+.venv\Scripts\python reports/build_reports.py                 # rebuild PDF reports (requires Microsoft Edge)
+.venv\Scripts\python docs/draw_architecture.py                # regenerate docs/architecture.png
+.venv\Scripts\python -m src.ingest                            # re-download 1,000 papers from arXiv (~2 min; changes dataset & invalidates benchmark labels)
 ```
+</details>
+
+<details>
+<summary>Troubleshooting (Windows)</summary>
+
+| Problem | Cause & Fix |
+| --- | --- |
+| **`Could not open the vector index`** in the web app | The ChromaDB index (`data/processed/vector_index/`) is git-ignored. Stop the app (`Ctrl+C`), run `.venv\Scripts\python -m src.indexer`, then run `.venv\Scripts\streamlit run src/app.py` again. |
+| **`No matching distribution found for torch==2.14.1`** | Your `.venv` was created with a Python version other than 64-bit Python 3.12 (check with `.venv\Scripts\python --version`). Delete `.venv` (`Remove-Item -Recurse -Force .venv`) and recreate it with `py -3.12 -m venv .venv`. |
+| **PowerShell `running scripts is disabled on this system`** | Either invoke `.venv\Scripts\python` and `.venv\Scripts\streamlit` directly (no activation needed), or run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` in the current PowerShell window before `.venv\Scripts\Activate.ps1`. |
+| **`No space left on device` on drive `C:`** | By default, `pip`, Hugging Face, and temp files write to `C:\Users\<user>\`. If your `C:` drive is nearly full and the repo is on another drive, redirect caches inside PowerShell before installing/running:<br>`mkdir -Force .cache\tmp, .cache\pip, .cache\huggingface`<br>`$env:TMP="$PWD\.cache\tmp"; $env:TEMP=$env:TMP; $env:PIP_CACHE_DIR="$PWD\.cache\pip"; $env:HF_HOME="$PWD\.cache\huggingface"` |
+| **Out of memory / paging error during `pytest`** | Stop `streamlit run` (`Ctrl+C`) and close heavy applications before running `pytest` or `python -m src.evaluate`. |
+| **Port `8501` is already in use** | Run `.venv\Scripts\streamlit run src/app.py --server.port 8502`. |
 </details>
 
 ## Architecture

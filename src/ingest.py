@@ -63,10 +63,12 @@ def parse_entry(entry: ET.Element) -> dict:
         "title": clean_text(entry.findtext("atom:title", "", NS)),
         "abstract": clean_text(entry.findtext("atom:summary", "", NS)),
         "authors": [clean_text(a.findtext("atom:name", "", NS))
-                    for a in entry.findall("atom:author", NS)],
+                    for a in entry.findall("atom:author", NS)
+                    if clean_text(a.findtext("atom:name", "", NS))],
         "doi": doi,
         "categories": categories,
-        "primary_category": primary.get("term") if primary is not None else categories[0],
+        "primary_category": (primary.get("term") if primary is not None and primary.get("term")
+                             else (categories[0] if categories else "")),
         # <published> is ISO 8601 (2024-01-02T18:59:59Z); keep the date part.
         "published_date": entry.findtext("atom:published", "", NS)[:10],
         "pdf_url": pdf_url.replace("http://", "https://", 1),
@@ -113,7 +115,8 @@ def fetch_page(search_query: str, start: int, max_results: int, retries: int = 3
 
 
 def is_valid(record: dict) -> bool:
-    return bool(record["id"] and record["title"] and record["abstract"] and record["authors"])
+    return bool(record["id"] and record["title"] and record["abstract"]
+                and record["authors"] and record["categories"] and record["published_date"])
 
 
 def collect(categories=CATEGORIES, years=YEARS, per_cell=PER_CELL) -> list[dict]:

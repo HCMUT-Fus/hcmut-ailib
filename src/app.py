@@ -10,7 +10,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src import ingest, indexer  # noqa: E402
+from src import indexer, ingest  # noqa: E402
 from src.citations import FORMATS  # noqa: E402
 from src.keywords import KeywordExtractor  # noqa: E402
 from src.search_engine import SearchEngine, SearchResult  # noqa: E402
@@ -49,6 +49,19 @@ def year_bounds() -> tuple[int, int]:
     return min(years), max(years)
 
 
+def _select_similar(paper_id: str) -> None:
+    st.session_state.similar_to = paper_id
+
+
+def _on_example_change() -> None:
+    st.session_state.query = st.session_state.get("example") or ""
+
+
+def _on_query_change() -> None:
+    if st.session_state.get("example") != st.session_state.get("query"):
+        st.session_state.example = None
+
+
 def render_card(result: SearchResult, key_prefix: str) -> None:
     paper = result.paper
     with st.container(border=True):
@@ -77,8 +90,7 @@ def render_card(result: SearchResult, key_prefix: str) -> None:
         if paper.doi:
             links[2].link_button("DOI", f"https://doi.org/{paper.doi}", width="stretch")
         if links[3].button("🔍 Find similar", key=f"{key_prefix}-sim-{paper.id}",
-                           width="stretch"):
-            st.session_state.similar_to = paper.id
+                           on_click=_select_similar, args=(paper.id,), width="stretch"):
             st.toast("Open the “Similar papers” tab to see the results.")
 
         with st.expander("Cite this paper"):
@@ -95,8 +107,10 @@ def search_tab(engine: SearchEngine, filters: dict) -> None:
     if "query" not in st.session_state:
         st.session_state.query = ""
     st.text_input("Search query", key="query", label_visibility="collapsed",
-                  placeholder="e.g. transfer learning for low-resource machine translation")
-    suggestion = st.pills("Try an example", EXAMPLE_QUERIES, key="example")
+                  placeholder="e.g. transfer learning for low-resource machine translation",
+                  on_change=_on_query_change)
+    suggestion = st.pills("Try an example", EXAMPLE_QUERIES, key="example",
+                          on_change=_on_example_change)
     query = st.session_state.query.strip() or (suggestion or "")
 
     if not query:
@@ -118,16 +132,22 @@ def search_tab(engine: SearchEngine, filters: dict) -> None:
 
 
 def similar_tab(engine: SearchEngine, top_k: int) -> None:
-    paper_id = st.text_input("arXiv id", value=st.session_state.get("similar_to", ""),
+    if "similar_to" not in st.session_state:
+        st.session_state.similar_to = ""
+    paper_id = st.text_input("arXiv id", key="similar_to",
                              placeholder="e.g. 2401.01076",
                              help="Click “Find similar” on any search result, or paste an id.")
-    if not paper_id:
+    raw_id = paper_id.strip()
+    if not raw_id:
         st.info("Pick a paper with the “Find similar” button in the Search tab.")
         return
+    clean_id = ingest.parse_arxiv_id(
+        raw_id[6:].strip() if raw_id.lower().startswith("arxiv:") else raw_id
+    )
     try:
-        source = engine.get(paper_id.strip())
+        source = engine.get(clean_id)
     except KeyError:
-        st.error(f"Paper {paper_id} is not in the index.")
+        st.error(f"Paper {raw_id} is not in the index.")
         return
     st.markdown(f"Papers most similar to **{source.title}** ({source.id})")
     for result in engine.similar(source.id, top_k):

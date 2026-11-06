@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m compileall -q src tests reports/build_reports.py
-      - run: pip install ruff && ruff check src tests --select E9,F
+      - run: pip install ruff==0.17.1 && ruff check src tests --select E9,F
 
   test:
     name: Tests & retrieval benchmark
@@ -30,7 +30,7 @@ jobs:
           cache: pip
       - name: Install dependencies (CPU-only PyTorch)
         run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
       - name: Cache embedding model
         uses: actions/cache@v4

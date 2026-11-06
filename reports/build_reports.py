@@ -102,7 +102,7 @@ def render_html(md_path: Path) -> str:
         extension_configs={"toc": {"title": "Table of Contents", "toc_depth": "2-3"}},
         output_format="html5",
     )
-    match = re.search(r"<h1[^>]*>(.*?)</h1>", body, re.S)
+    match = re.search(r"<h1[^>]*>(.*?)</h1>", body, re.DOTALL)
     title = re.sub(r"<[^>]+>", "", match.group(1)) if match else md_path.stem
     base = md_path.parent.resolve().as_uri() + "/"
     return TEMPLATE.format(title=title, base=base, css=CSS, body=body)

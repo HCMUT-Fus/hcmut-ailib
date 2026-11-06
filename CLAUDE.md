@@ -15,18 +15,18 @@ Docs: `README.md` (user-facing), `TCP.md` (handover notes, results, open TODOs),
 
 ## Commands (Windows, from repo root)
 
-```bash
-python -m venv .venv
-.venv/Scripts/pip install torch --index-url https://download.pytorch.org/whl/cpu   # CPU torch FIRST
-.venv/Scripts/pip install -r requirements.txt
-.venv/Scripts/python -m src.indexer          # build index (~1 min, downloads 90 MB model once)
-.venv/Scripts/streamlit run src/app.py       # http://localhost:8501
-.venv/Scripts/python -m pytest -q            # 31 tests; retrieval/UI tests skip without index
-.venv/Scripts/python -m ruff check src tests --select E9,F   # same lint as CI
-.venv/Scripts/python -m src.evaluate         # benchmark → reports/results/evaluation.json
+```powershell
+python -m venv .venv                         # or: py -3.12 -m venv .venv
+.venv\Scripts\pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu   # CPU torch FIRST
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python -m src.indexer          # build index (~1 min, downloads 90 MB model once)
+.venv\Scripts\streamlit run src/app.py       # http://localhost:8501
+.venv\Scripts\python -m pytest -q            # 31 tests; retrieval/UI tests skip without index
+.venv\Scripts\python -m ruff check src tests --select E9,F   # same lint as CI
+.venv\Scripts\python -m src.evaluate         # benchmark → reports/results/evaluation.json
 ```
 
-Linux/macOS: replace `.venv/Scripts/` with `.venv/bin/`.
+Git Bash: replace `\` with `/` (`.venv/Scripts/...`). Linux/macOS: replace `.venv\Scripts\` with `.venv/bin/`.
 
 ## Architecture
 
@@ -45,6 +45,10 @@ Invariants:
 - Author filtering is done in Python after retrieval (Chroma can't substring-match).
 - `src/app.py` inserts the repo root into `sys.path`, so `streamlit run src/app.py` works
   from the root; modules import each other as `from src import ...`.
+- `src/app.py` uses `on_click` (`_select_similar`) for "Find similar" buttons and `on_change`
+  callbacks between `st.pills` (`key="example"`) and `st.text_input` (`key="query"`), so widget
+  state updates before tabs render; `similar_tab` strips `arXiv:` prefixes, URLs and `vN`
+  version suffixes via `ingest.parse_arxiv_id`.
 - `tests/benchmark_queries.json` labels are tied to the committed dataset; re-running
   `src.ingest` changes the data and invalidates them.
 
@@ -66,7 +70,16 @@ Invariants:
   `git grep -nE '^(<<<<<<<|=======|>>>>>>>)( |$)'` and the tests.
 - The vector index is git-ignored: every fresh clone must run `python -m src.indexer`
   before the app or the index-dependent tests work.
-- Install CPU torch before `requirements.txt`, otherwise Linux pip pulls the multi-GB CUDA build.
+- Always pin `torch==2.14.1` when installing from `https://download.pytorch.org/whl/cpu`
+  (and keep `--extra-index-url https://download.pytorch.org/whl/cpu` in `requirements.txt`);
+  an unpinned `pip install torch --index-url ...` would install a newer `+cpu` build and cause
+  `pip install -r requirements.txt` to downgrade `torch==2.14.1` from PyPI (pulling the multi-GB CUDA wheel on Linux).
+- On Windows PowerShell, `.venv\Scripts\Activate.ps1` is blocked by default `ExecutionPolicy`;
+  prefer invoking `.venv\Scripts\python` and `.venv\Scripts\streamlit` directly (works in both
+  PowerShell and CMD).
+- `streamlit.testing.v1.AppTest` (`tests/test_app.py`) creates an `asyncio` event loop per run,
+  which on Windows calls `socket.socketpair()` over `127.0.0.1` loopback TCP; environments that
+  block loopback sockets (e.g. network-isolated sandboxes) will hang in `AppTest.run()`.
 - The original dev machine has a nearly full C: drive; TCP.md §3.2 sets `TMP`/`HF_HOME` to
   `G:` and `HF_HUB_OFFLINE=1`. That is machine-specific; other machines don't need it.
 - Running Streamlit and the test suite together can exhaust RAM on 8 GB machines (~577 MB RSS each).

@@ -34,7 +34,7 @@ class Paper:
         return f"https://arxiv.org/abs/{self.id}"
 
     @classmethod
-    def from_chroma(cls, paper_id: str, document: str, metadata: dict) -> "Paper":
+    def from_chroma(cls, paper_id: str, document: str, metadata: dict) -> Paper:
         return cls(
             id=paper_id,
             title=metadata["title"],
@@ -96,6 +96,7 @@ class SearchEngine:
                author: str | None = None) -> list[SearchResult]:
         """Return up to ``top_k`` papers ranked by semantic similarity to ``query``."""
         query = (query or "").strip()
+        author = (author or "").strip() or None
         if not query or top_k < 1:
             return []
         return self._query(self.embed(query), top_k, build_where(year_range, categories), author)
@@ -105,6 +106,8 @@ class SearchEngine:
         found = self.collection.get(ids=[paper_id], include=["embeddings"])
         if not found["ids"]:
             raise KeyError(paper_id)
+        if top_k < 1:
+            return []
         results = self._query(list(found["embeddings"][0]), top_k + 1, None, None)
         others = [r for r in results if r.paper.id != paper_id][:top_k]
         return [SearchResult(r.paper, r.score, i) for i, r in enumerate(others, 1)]

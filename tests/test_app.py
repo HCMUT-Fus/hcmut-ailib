@@ -48,6 +48,9 @@ def test_find_similar_fills_similar_tab(app):
     assert not app.exception
     assert any(m.value.startswith("Papers most similar to") for m in app.markdown)
     assert len(card_titles(app)) == 6  # 3 search results + 3 similar papers
+    app.text_input(key="similar_to").input("arXiv:2401.01076v1").run()
+    assert not app.exception
+    assert any("2401.01076" in m.value for m in app.markdown)
 
 
 def test_filters_without_matches_show_warning(app):

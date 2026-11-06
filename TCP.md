@@ -142,7 +142,7 @@ hcmut-ailib/
 
 ```bash
 python -m venv .venv
-.venv/Scripts/pip install torch --index-url https://download.pytorch.org/whl/cpu
+.venv/Scripts/pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
 .venv/Scripts/pip install -r requirements.txt
 .venv/Scripts/python -m src.indexer        # build the index (~1 min)
 ```

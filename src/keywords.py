@@ -44,6 +44,8 @@ class KeywordExtractor:
         return math.log((1 + self.n_docs) / (1 + self.doc_freq[term])) + 1
 
     def extract(self, text: str, k: int = 6) -> list[str]:
+        if k < 1:
+            return []
         counts = Counter(candidate_terms(text))
         # A bigram counts as a phrase only if it repeats in the text or occurs in another
         # document; otherwise accidental word pairs ("accepting bogus") win on rarity.
