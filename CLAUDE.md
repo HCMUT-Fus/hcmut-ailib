@@ -5,9 +5,9 @@
 
 ## What this is
 
-HCMUT-AILib: a local-first semantic search engine over 1,000 arXiv papers (cs.AI/LG/CL/IR,
+HCMUT-AILib: a local-first semantic search engine over 1,000–10,000 arXiv papers (cs.AI/LG/CL/IR,
 2021–2025). CO2001 course project at HCMUT, team of 4 (see README "Team").
-Stack: Python 3.12, `sentence-transformers` (`all-MiniLM-L6-v2`, CPU) → ChromaDB (cosine,
+Stack: Python 3.12, `sentence-transformers` (`MongoDB/mdbr-leaf-ir`, CPU) → ChromaDB (cosine,
 HNSW) → Streamlit UI. No paid API, no GPU, no telemetry.
 
 Docs: `README.md` (user-facing), `TCP.md` (handover notes, results, open TODOs),
@@ -21,7 +21,7 @@ python -m venv .venv                         # or: py -3.12 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 .venv\Scripts\python -m src.indexer          # build index (~1 min, downloads 90 MB model once)
 .venv\Scripts\streamlit run src/app.py       # http://localhost:8501
-.venv\Scripts\python -m pytest -q            # 32 tests; retrieval/UI tests skip without index
+.venv\Scripts\python -m pytest -q            # 38 tests; retrieval/UI tests skip without index
 .venv\Scripts\python -m ruff check src tests --select E9,F   # same lint as CI
 .venv\Scripts\python -m src.evaluate         # benchmark → reports/results/evaluation.json
 .venv\Scripts\python -m src.evaluate --scifact # standard BEIR-SciFact benchmark → reports/results/scifact_evaluation.json
@@ -46,8 +46,8 @@ Invariants:
 - Category filters rely on boolean metadata keys `cat:<category>` (`indexer.category_key`).
 - Author filtering uses `AuthorIndex` with `strip_accents` for fast, diacritic-insensitive candidate lookup without full collection scans.
 - Precomputed embeddings in `data/raw/arxiv_embeddings_*.npz` allow instant ChromaDB index builds (< 10 s for 10,000 papers).
-- `src/app.py` inserts the repo root into `sys.path`, so `streamlit run src/app.py` works
-  from the root; modules import each other as `from src import ...`.
+- `src/app.py` and `tests/conftest.py` insert the repo root into `sys.path`, so `streamlit run src/app.py`
+  and bare `pytest` work from the root; modules import each other as `from src import ...`.
 - `src/app.py` uses `on_click` (`_select_similar`, `_reset_filters`, `_clear_query`) and
   `on_change` callbacks between `st.pills` (`key="example"`) and `st.text_input` (`key="query"`),
   as well as between `st.selectbox` (`key="seed_picker"`) and `st.text_input` (`key="similar_to"`),
