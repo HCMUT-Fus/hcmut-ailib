@@ -24,6 +24,7 @@ python -m venv .venv                         # or: py -3.12 -m venv .venv
 .venv\Scripts\python -m pytest -q            # 32 tests; retrieval/UI tests skip without index
 .venv\Scripts\python -m ruff check src tests --select E9,F   # same lint as CI
 .venv\Scripts\python -m src.evaluate         # benchmark → reports/results/evaluation.json
+.venv\Scripts\python -m src.evaluate --scifact # standard BEIR-SciFact benchmark → reports/results/scifact_evaluation.json
 ```
 
 Git Bash: replace `\` with `/` (`.venv/Scripts/...`). Linux/macOS: replace `.venv\Scripts\` with `.venv/bin/`.
@@ -32,17 +33,19 @@ Git Bash: replace `\` with `/` (`.venv/Scripts/...`). Linux/macOS: replace `.ven
 
 | Module | Role |
 | --- | --- |
-| `src/ingest.py` | arXiv API → `data/raw/arxiv_sample_1000.json` (≥3 s between requests, arXiv ToU) |
-| `src/indexer.py` | embeds `"title. abstract"`, writes ChromaDB to `data/processed/vector_index/` |
-| `src/search_engine.py` | `SearchEngine.search/similar/get`, `build_where` filters, score = (1+cos)/2 |
-| `src/citations.py`, `src/keywords.py` | BibTeX/APA/IEEE; TF-IDF key terms |
+| `src/ingest.py` | arXiv API → `data/raw/arxiv_sample_10000.json` (≥3 s between requests, arXiv ToU, supports checkpointing) |
+| `src/indexer.py` | embeds `"title. abstract"`, supports precomputed `.npz` vector cache, writes ChromaDB to `data/processed/vector_index/` |
+| `src/search_engine.py` | `SearchEngine.search/hybrid_search/similar/get`, `AuthorIndex` (in-memory inverted index), score = (1+cos)/2 |
+| `src/text_utils.py` | Vietnamese accent/diacritic removal (`strip_accents`) and common surname heuristics |
+| `src/citations.py`, `src/keywords.py` | BibTeX/APA/IEEE with Vietnamese naming conventions; TF-IDF key terms |
 | `src/lexical_baseline.py`, `src/metrics.py`, `src/evaluate.py` | BM25 baseline, MRR/P@k, benchmark |
-| `src/app.py` | Dark-mode Streamlit workbench (tabs: Semantic Search, Similar Papers, Reading List, Corpus & Benchmark, System & About) |
+| `src/app.py` | Dark-mode Streamlit workbench (tabs: Semantic/Hybrid Search with Cross-Encoder, Similar Papers, Reading List, Corpus & Benchmark, System & About) |
 
 Invariants:
 - Indexer and search must use the same `indexer.MODEL_NAME`; changing it requires a rebuild.
 - Category filters rely on boolean metadata keys `cat:<category>` (`indexer.category_key`).
-- Author filtering is done in Python after retrieval (Chroma can't substring-match).
+- Author filtering uses `AuthorIndex` with `strip_accents` for fast, diacritic-insensitive candidate lookup without full collection scans.
+- Precomputed embeddings in `data/raw/arxiv_embeddings_*.npz` allow instant ChromaDB index builds (< 10 s for 10,000 papers).
 - `src/app.py` inserts the repo root into `sys.path`, so `streamlit run src/app.py` works
   from the root; modules import each other as `from src import ...`.
 - `src/app.py` uses `on_click` (`_select_similar`, `_reset_filters`, `_clear_query`) and

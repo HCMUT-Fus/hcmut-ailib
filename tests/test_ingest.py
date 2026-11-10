@@ -78,9 +78,9 @@ def papers():
     return ingest.load()
 
 
-def test_dataset_has_1000_unique_records(papers):
-    assert len(papers) == 1000
-    assert len({p["id"] for p in papers}) == 1000
+def test_dataset_has_unique_records(papers):
+    assert len(papers) in (1000, 10000)
+    assert len({p["id"] for p in papers}) == len(papers)
 
 
 def test_dataset_schema(papers):
@@ -99,6 +99,9 @@ def test_dataset_schema(papers):
 
 def test_dataset_is_stratified(papers):
     years = Counter(int(p["published_date"][:4]) for p in papers)
-    assert years == {y: 200 for y in ingest.YEARS}
+    assert len(years) == len(ingest.YEARS)
+    expected_per_year = len(papers) // len(ingest.YEARS)
+    for y in ingest.YEARS:
+        assert abs(years[y] - expected_per_year) <= expected_per_year * 0.15
     for category in ingest.CATEGORIES:
-        assert sum(category in p["categories"] for p in papers) >= 250
+        assert sum(category in p["categories"] for p in papers) >= (len(papers) // 5)

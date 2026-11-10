@@ -16,12 +16,20 @@ even though the two share almost no words. Everything runs on an ordinary laptop
 
 ## Features
 
-- **Semantic search** over 1,000 arXiv papers (cs.AI, cs.LG, cs.CL, cs.IR; 2021–2025)
-- **Filters**: number of results (1–20), publication year, arXiv category, author
-- **Paper cards**: match score, category badges, key terms, abstract, PDF / arXiv / DOI links
-- **Find similar papers** for any result
-- **One-click citations** in BibTeX, APA 7 and IEEE
-- Light and dark themes; no query logging, no telemetry
+- **Semantic & Hybrid search** over 10,000 open-access arXiv papers across 17 AI & Computer Science categories (2021–2025)
+- **Retrieval modes**:
+  - **Hybrid Search (Default)**: Combines Dense Vector and BM25 lexical scoring via Reciprocal Rank Fusion (RRF)
+  - **Cross-Encoder Re-ranking (Optional)**: 2-stage precision re-ranking of top candidates with `cross-encoder/ms-marco-MiniLM-L-2-v2` (~30 ms overhead)
+  - **Semantic Vector Search**: Pure dense representation matching conceptual meaning
+  - **Keyword Search (BM25)**: Lexical baseline enhanced with **BM25 Title Weighting** (doubles term frequency for title hits)
+- **Multi-model Architecture**: Pluggable dense embedding support for `sentence-transformers/all-MiniLM-L6-v2` and `MongoDB/mdbr-leaf-ir` (384-dimensional extraction)
+- **Fast local indexing**: Decoupled neural embeddings allow instant ChromaDB index builds (< 10 s from precomputed `.npz` cache)
+- **Scalable author filtering**: In-memory Inverted Index with Vietnamese diacritic/accent normalization (e.g. `Nguyen` matches `Nguyễn`)
+- **One-click citations**: BibTeX, APA 7 and IEEE with automated Vietnamese surname formatting
+- **Filters**: number of results (1–20), publication year, 17 arXiv categories, author
+- **Paper cards**: match score with descriptive tooltips, category badges, key terms, abstract preview & full expander, PDF / arXiv / DOI links
+- **Find similar papers**: featuring curated popular papers and recent session history dropdown
+- Light and dark themes; zero external telemetry, zero API fees, local-first privacy
 
 ## Results (v1.0.0)
 
@@ -83,13 +91,15 @@ python -m venv .venv
 
 ```powershell
 # Stop the Streamlit app (Ctrl+C) before running tests on 8 GB RAM laptops (~577 MB RSS per process)
-.venv\Scripts\python -m pytest -q                             # run all 31 tests (~30 s; requires the index from step 4)
+.venv\Scripts\python -m pytest -q                             # run all 38 tests (~40 s; requires the index from step 4)
 .venv\Scripts\python -m pytest -q -s tests/test_retrieval.py  # run benchmark tests and print MRR / P@5
 .venv\Scripts\python -m ruff check src tests --select E9,F    # syntax & lint check (same as CI)
 .venv\Scripts\python -m src.evaluate                          # full benchmark: MRR, P@5, latency, memory, PCA figure
+.venv\Scripts\python -m src.evaluate --scifact                # evaluate on BEIR-SciFact dataset (300 test queries)
+.venv\Scripts\python -m src.indexer --model MongoDB/mdbr-leaf-ir --dim 384 # build index with MongoDB/mdbr-leaf-ir (384D)
 .venv\Scripts\python reports/build_reports.py                 # rebuild PDF reports (requires Microsoft Edge)
 .venv\Scripts\python docs/draw_architecture.py                # regenerate docs/architecture.png
-.venv\Scripts\python -m src.ingest                            # re-download 1,000 papers from arXiv (~2 min; changes dataset & invalidates benchmark labels)
+.venv\Scripts\python -m src.ingest                            # re-download papers from arXiv (changes dataset & invalidates benchmark labels)
 ```
 </details>
 

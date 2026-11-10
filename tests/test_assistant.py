@@ -13,7 +13,9 @@ def make_paper(authors, doi=None):
 
 
 def test_name_helpers():
-    assert split_name("Nguyen Van An") == ("An", ["Nguyen", "Van"])
+    assert split_name("Nguyễn Văn An") == ("Nguyễn", ["Văn", "An"])
+    assert split_name("Nguyen Van An") == ("Nguyen", ["Van", "An"])
+    assert split_name("Alan Mathison Turing") == ("Turing", ["Alan", "Mathison"])
     assert split_name("Plato") == ("Plato", [])
     assert initials(["Jean-Pierre", "K."]) == "J.-P. K."
 

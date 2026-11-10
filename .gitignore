@@ -10,9 +10,10 @@ venv/
 # Local caches (pip, Hugging Face models, temp files)
 .cache/
 
-# Generated vector store: rebuild with `python -m src.indexer`
-data/processed/vector_index/*
-!data/processed/vector_index/.gitkeep
+# Generated vector stores and benchmarks
+data/processed/
+data/benchmarks/
+*.npz
 
 # Report build intermediates
 reports/src/*.html

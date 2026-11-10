@@ -26,7 +26,20 @@ CATEGORY_NAMES = {
     "cs.AI": "Artificial Intelligence",
     "cs.LG": "Machine Learning",
     "cs.CL": "Computation and Language",
+    "cs.CV": "Computer Vision",
+    "cs.RO": "Robotics",
     "cs.IR": "Information Retrieval",
+    "cs.HC": "Human-Computer Interaction",
+    "cs.CR": "Cryptography and Security",
+    "cs.CY": "Computers and Society",
+    "cs.SD": "Sound",
+    "cs.SI": "Social and Information Networks",
+    "cs.SE": "Software Engineering",
+    "cs.NE": "Neural and Evolutionary Computing",
+    "cs.DB": "Databases",
+    "stat.ML": "Machine Learning (Stats)",
+    "eess.AS": "Audio and Speech Processing",
+    "eess.IV": "Image and Video Processing",
 }
 EXAMPLE_QUERIES = [
     "detecting fake news on social media",
@@ -38,7 +51,7 @@ EXAMPLE_QUERIES = [
     "blurring sensitive objects in real-time video broadcasts",
 ]
 RETRIEVAL_MODES = (
-    "Dense Semantic (MiniLM-L6)",
+    "Dense Semantic (mdbr-leaf-ir)",
     "Hybrid RRF (Semantic + BM25)",
     "Lexical Baseline (Okapi BM25)",
 )
@@ -507,7 +520,7 @@ def execute_retrieval(
     author: str | None,
 ) -> list[SearchResult]:
     """Run semantic, BM25, or Reciprocal Rank Fusion (RRF) hybrid retrieval."""
-    if retrieval_mode == "Dense Semantic (MiniLM-L6)":
+    if retrieval_mode.startswith("Dense Semantic"):
         return engine.search(
             query,
             top_k=top_k,
@@ -673,7 +686,7 @@ def render_card(
         score.metric(
             "Match",
             f"{result.score:.0%}",
-            help="Cosine similarity rescaled to 0–1; compare within this query only.",
+            help="Semantic Similarity Score: Cosine similarity rescaled to 0–1; compare within this query only.",
         )
         score.progress(result.score)
 
@@ -784,7 +797,7 @@ def render_onboarding() -> None:
         with st.container(border=True):
             st.markdown(
                 "### 🎯 Semantic & Hybrid Modes\n"
-                "Switch seamlessly between **Dense Semantic** (`all-MiniLM-L6-v2`), "
+                "Switch seamlessly between **Dense Semantic** (`MongoDB/mdbr-leaf-ir`), "
                 "**Hybrid RRF** (Reciprocal Rank Fusion), and **Okapi BM25** keyword search "
                 "from the sidebar to see how meaning-based search overcomes vocabulary mismatch."
             )

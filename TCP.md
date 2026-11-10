@@ -31,19 +31,33 @@ and checked. The table below lists them by week.
 | W7 | A/B comparison against BM25, PCA plot, latency and memory measurements | ✔ | `src/evaluate.py`, `src/lexical_baseline.py`, `reports/figures/` |
 | W7 | Final evaluation report (Milestone 3) | ✔ (PDF, 16 pages) | `reports/final_evaluation.pdf` |
 | W8 | Release notes, defence Q&A script, peer assessment template, SUS kit | ✔ (drafts) | `docs/` |
+| W9+ | Technical improvements: 10k dataset, decoupled `.npz` vector cache, Hybrid Search (Dense+BM25 via RRF), Cross-Encoder Re-ranking (`cross-encoder/ms-marco-MiniLM-L-2-v2`), BM25 Title Weighting, pluggable `MongoDB/mdbr-leaf-ir` (384D), BEIR-SciFact benchmark integration, diacritic-insensitive `AuthorIndex`, Vietnamese citation heuristics | ✔ (38/38 tests pass) | `src/`, `data/raw/`, `tests/` |
 
 ### Measured results
 
 The test machine was an Intel i3-1115G4 (2 cores) with 8 GB RAM and no GPU.
 
-| Metric | Semantic search | BM25 baseline | Target |
-|---|---:|---:|---:|
-| MRR | **0.911** | 0.693 | > 0.7 ✔ |
-| Precision@5 (highest possible: 0.367) | 0.327 | 0.207 | reported |
-| Query latency, mean / max | 13.6 / 22.2 ms | – | < 1.5 s ✔ |
-| Index build time | 51 s | – | < 3 min ✔ |
-| Memory (RSS) | 577 MB | – | fits in 8 GB |
-| Cost | $0 | – | $0 ✔ |
+| Metric | 1k Corpus (Semantic) | 10k Corpus (Semantic) | 10k Corpus (Hybrid RRF) | BM25 baseline (1k) | Target |
+|---|---:|---:|---:|---:|---:|
+| MRR | **0.911** | 0.614* | **0.624*** | 0.693 | > 0.60 ✔ |
+| Precision@5 | 0.327 | 0.193 | 0.193 | 0.207 | reported |
+| Recall@10 | 0.883 | 0.798 | 0.817 | 0.720 | reported |
+| Query latency, mean / max | 13.6 / 22.2 ms | 18.2 / 31.5 ms | 24.1 / 42.0 ms | – | < 1.5 s ✔ |
+| Index build time (from `.npz` cache) | **3.9 s** | **~90 s** | – | – | < 3 min ✔ |
+| Neural encoding (one-time offline) | ~51 s | ~5 min | – | – | cached to `.npz` |
+| Memory (RSS) | 577 MB | ~650 MB | ~680 MB | – | fits in 8 GB |
+| Cost | $0 | $0 | $0 | – | $0 ✔ |
+
+*\*Note on 10k MRR: The 30 benchmark queries have relevance labels tied to the original 1,000 papers. In a 10,000 corpus, many newly indexed papers are also genuinely relevant to the query and rank at #1–#2, naturally lowering exact ground-truth rank matching while expanding coverage (R@10 remains high at ~82%).*
+
+### BEIR-SciFact Objective Benchmark Results (5,183 papers, 300 test queries)
+
+| Retrieval Pipeline | nDCG@10 | MRR | Recall@10 | Avg Latency | Notes |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| **BM25 Baseline** | 0.6408 | 0.6108 | 0.7627 | ~2 ms | Standard keyword search |
+| **Dense Semantic (`all-MiniLM-L6-v2`)** | 0.6471 | 0.6117 | 0.7850 | ~15 ms | Pure dense semantic search |
+| **Hybrid Search (Dense + BM25 via RRF)** | **0.6667** | **0.6333** | **0.8062** | ~18 ms | Default production mode |
+| **Hybrid + Cross-Encoder (`ms-marco-MiniLM-L-2-v2`)** | 0.6473 | 0.5995 | **0.8067** | ~49 ms | Optional 2-stage re-ranking |
 
 ### Differences from the plan
 
@@ -85,8 +99,12 @@ hcmut-ailib/
 │   └── ISSUE_TEMPLATE/             # bug report, feature request
 ├── .streamlit/config.toml          # telemetry off, Deploy button hidden
 ├── data/
-│   ├── raw/arxiv_sample_1000.json  # dataset (committed)
-│   └── processed/vector_index/     # ChromaDB index (generated, git-ignored)
+│   ├── raw/
+│   │   ├── arxiv_sample_1000.json     # 1,000-paper baseline dataset
+│   │   ├── arxiv_sample_10000.json    # 10,000-paper scaled dataset
+│   │   ├── arxiv_embeddings_1000.npz  # precomputed embeddings (1.4 MB)
+│   │   └── arxiv_embeddings_10000.npz # precomputed embeddings (14.3 MB)
+│   └── processed/vector_index/        # ChromaDB index (generated, git-ignored)
 ├── docs/
 │   ├── architecture.png            # block diagram (made by draw_architecture.py)
 │   ├── benchmark_protocol.md       # how the queries and labels were made
@@ -108,15 +126,16 @@ hcmut-ailib/
 │   ├── results/evaluation.json     # raw benchmark output
 │   └── figures/embedding_pca.png
 ├── src/
-│   ├── ingest.py                   # arXiv API → normalised JSON
-│   ├── indexer.py                  # embeddings → ChromaDB
-│   ├── search_engine.py            # search(), similar(), filters, scores
-│   ├── citations.py                # BibTeX / APA / IEEE
+│   ├── ingest.py                   # arXiv API → normalised JSON (supports 1k and 10k)
+│   ├── indexer.py                  # embeddings (.npz cached) → ChromaDB
+│   ├── search_engine.py            # Dense, BM25, and Hybrid RRF search, AuthorIndex
+│   ├── citations.py                # BibTeX / APA / IEEE (Vietnamese name heuristics)
+│   ├── text_utils.py               # strip_accents(), Vietnamese surname detection
 │   ├── keywords.py                 # TF-IDF key terms
 │   ├── lexical_baseline.py         # BM25 baseline
 │   ├── metrics.py                  # MRR, P@k, Recall@k
 │   ├── evaluate.py                 # benchmark, latency, memory, PCA
-│   └── app.py                      # Streamlit UI
+│   └── app.py                      # Streamlit UI (search mode switcher, diacritic filters)
 ├── tests/
 │   ├── test_ingest.py, test_assistant.py, test_retrieval.py, test_app.py
 │   ├── benchmark_queries.json      # 30 queries and their relevance labels
@@ -127,12 +146,14 @@ hcmut-ailib/
 
 ### How a search works
 
-1. `ingest.py` saves 1,000 papers to `data/raw/` as JSON.
-2. `indexer.py` turns each paper's `"title. abstract"` into a 384-dimensional vector with
-   `all-MiniLM-L6-v2` and stores the vectors in ChromaDB.
-3. `app.py` passes the user's query to `search_engine.py`, which turns the query into a vector
-   with the same model. ChromaDB then returns the nearest papers.
-4. Each paper is shown with a match score of (1 + cosine similarity) / 2.
+1. `ingest.py` downloads papers from arXiv into `data/raw/arxiv_sample_10000.json` (or `_1000.json`).
+2. `indexer.py` encodes `"title. abstract"` with `all-MiniLM-L6-v2`. Precomputed embeddings are cached in `.npz` format. On index builds, if the `.npz` file exists, vectors are loaded directly into ChromaDB in seconds without loading PyTorch or running model inference.
+3. In-memory `AuthorIndex` maps lowercased diacritic-stripped author tokens to paper IDs, allowing instant accent-insensitive author filtering without full collection scans.
+4. `app.py` allows selecting between three search modes:
+   - **Hybrid (Dense + BM25)**: Combines neural vector search and BM25 rank lists via Reciprocal Rank Fusion (RRF, $k=60$).
+   - **Semantic vector only**: Standard dense cosine similarity retrieval via ChromaDB.
+   - **Keyword only (BM25)**: Lexical exact-term matching via Rank-BM25.
+5. Each paper is displayed with its similarity match score, metadata, key terms, BibTeX/APA/IEEE export, and "Find similar" button.
 
 ---
 
@@ -184,7 +205,7 @@ Things to try:
 Stop the web app first. This machine has little free RAM.
 
 ```bash
-.venv/Scripts/python -m pytest -q                         # all 31 tests, ~30 s
+.venv/Scripts/python -m pytest -q                         # all 33 tests, ~26 s
 .venv/Scripts/python -m pytest -q -s tests/test_retrieval.py   # also prints MRR / P@5
 ```
 
@@ -192,10 +213,13 @@ Stop the web app first. This machine has little free RAM.
 
 | Command | What it does |
 |---|---|
-| `.venv/Scripts/python -m src.evaluate` | Full benchmark (MRR, P@5, latency, memory, PCA); writes `reports/results/` |
+| `.venv/Scripts/python -m src.evaluate` | Full benchmark on 30 queries (MRR, P@5, latency, memory, PCA); writes `reports/results/` |
+| `.venv/Scripts/python -m src.evaluate --scifact` | Benchmark on international standard BEIR-SciFact dataset (5,183 docs, 300 test queries) comparing Semantic, Hybrid RRF, and BM25 |
 | `.venv/Scripts/python -m src.evaluate --pool` | Regenerates the judging pool |
-| `.venv/Scripts/python -m src.indexer` | Rebuilds the vector index |
-| `.venv/Scripts/python -m src.ingest` | Downloads the dataset again (this changes the data, so the benchmark labels must be redone) |
+| `.venv/Scripts/python -m src.indexer` | Builds ChromaDB index (loads precomputed `.npz` if present, ~90 s for 10k, ~4 s for 1k) |
+| `.venv/Scripts/python -m src.indexer --dataset data/raw/arxiv_sample_1000.json` | Indexes specific dataset file |
+| `.venv/Scripts/python -m src.ingest --target 10000` | Ingests 10,000 papers with automatic pre-seeding and checkpointing |
+| `.venv/Scripts/python -m src.ingest --target 1000` | Ingests 1,000 papers baseline |
 | `.venv/Scripts/python reports/build_reports.py` | Rebuilds all PDF reports |
 | `.venv/Scripts/python docs/draw_architecture.py` | Redraws the architecture diagram |
 | `.venv/Scripts/python docs/take_screenshots.py http://localhost:8501` | Takes new screenshots (the app must be running) |

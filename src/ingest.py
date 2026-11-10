@@ -1,7 +1,7 @@
-"""Fetch open metadata for 1,000 arXiv papers and save it as normalized JSON.
+"""Fetch open metadata for arXiv papers and save it as normalized JSON.
 
 The sample is stratified so that every (category, year) cell contributes the
-same number of papers: 4 categories x 5 years x 50 papers = 1,000 records.
+same number of papers: 4 categories x 5 years x per_cell papers.
 Requests are spaced at least 3 seconds apart, as required by the arXiv API
 Terms of Use. Run with ``python -m src.ingest``.
 """
@@ -20,10 +20,16 @@ from pathlib import Path
 API_URL = "https://export.arxiv.org/api/query"
 CATEGORIES = ("cs.AI", "cs.LG", "cs.CL", "cs.IR")
 YEARS = (2021, 2022, 2023, 2024, 2025)
-PER_CELL = 50
+PER_CELL_1000 = 50
+PER_CELL_10000 = 500
 PAGE_SIZE = 100
 REQUEST_INTERVAL_S = 3.0
-OUTPUT_PATH = Path(__file__).resolve().parent.parent / "data" / "raw" / "arxiv_sample_1000.json"
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = ROOT / "data" / "raw"
+OUTPUT_PATH_1000 = DATA_DIR / "arxiv_sample_1000.json"
+OUTPUT_PATH_10000 = DATA_DIR / "arxiv_sample_10000.json"
+OUTPUT_PATH = OUTPUT_PATH_10000 if OUTPUT_PATH_10000.exists() else OUTPUT_PATH_1000
 USER_AGENT = "hcmut-ailib/1.0 (CO2001 student project; https://github.com/HCMUT-Fus/hcmut-ailib)"
 
 NS = {
@@ -47,6 +53,19 @@ def parse_arxiv_id(entry_id: str) -> str:
     return re.sub(r"v\d+$", "", raw)
 
 
+def normalize_doi(doi: str | None) -> str | None:
+    if not doi:
+        return None
+    cleaned = clean_text(doi)
+    if not cleaned:
+        return None
+    if cleaned.lower().startswith("doi:"):
+        cleaned = cleaned[4:].strip()
+    if cleaned.startswith("0.") and not cleaned.startswith("10."):
+        cleaned = "1" + cleaned
+    return cleaned if cleaned.startswith("10.") else None
+
+
 def parse_entry(entry: ET.Element) -> dict:
     """Convert one Atom <entry> into a normalized record."""
     paper_id = parse_arxiv_id(entry.findtext("atom:id", "", NS))
@@ -57,7 +76,7 @@ def parse_entry(entry: ET.Element) -> dict:
     )
     primary = entry.find("arxiv:primary_category", NS)
     categories = [c.get("term") for c in entry.findall("atom:category", NS) if c.get("term")]
-    doi = clean_text(entry.findtext("arxiv:doi", None, NS)) or None
+    doi = normalize_doi(entry.findtext("arxiv:doi", None, NS))
     return {
         "id": paper_id,
         "title": clean_text(entry.findtext("atom:title", "", NS)),
@@ -103,7 +122,6 @@ def fetch_page(search_query: str, start: int, max_results: int, retries: int = 3
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
                 entries = parse_feed(response.read().decode("utf-8"))
-            # The API occasionally returns an empty page under load; retry it.
             if entries or attempt == retries - 1:
                 return entries
         except OSError as exc:
@@ -119,7 +137,9 @@ def is_valid(record: dict) -> bool:
                 and record["authors"] and record["categories"] and record["published_date"])
 
 
-def collect(categories=CATEGORIES, years=YEARS, per_cell=PER_CELL) -> list[dict]:
+def collect(categories=CATEGORIES, years=YEARS, per_cell: int = PER_CELL_10000,
+            seed_records: list[dict] | None = None,
+            checkpoint_path: Path | None = None) -> list[dict]:
     """Collect ``per_cell`` unique papers for every (category, year) pair.
 
     Papers are cross-listed, so a paper already taken by an earlier cell is
@@ -127,45 +147,79 @@ def collect(categories=CATEGORIES, years=YEARS, per_cell=PER_CELL) -> list[dict]
     """
     seen: set[str] = set()
     records: list[dict] = []
+
+    if seed_records:
+        for r in seed_records:
+            if r["id"] not in seen and is_valid(r):
+                seen.add(r["id"])
+                records.append(r)
+        print(f"Pre-seeded with {len(records)} existing records.")
+
     for category in categories:
         for year in years:
+            # Count how many existing records belong to this (category, year)
+            cell_existing = [r for r in records
+                             if category in r["categories"] and int(r["published_date"][:4]) == year]
+            taken = len(cell_existing)
+            start = taken
             query = build_query(category, year)
-            taken, start = 0, 0
+
             while taken < per_cell:
                 page = fetch_page(query, start, PAGE_SIZE)
                 if not page:
-                    raise RuntimeError(f"arXiv returned no more results for {query!r}")
+                    print(f"  Warning: arXiv returned no more results for {query!r} at start={start}")
+                    break
                 start += len(page)
+                added_in_page = 0
                 for record in page:
                     if record["id"] in seen or not is_valid(record):
                         continue
                     seen.add(record["id"])
                     records.append(record)
                     taken += 1
+                    added_in_page += 1
                     if taken == per_cell:
                         break
-            print(f"{category} {year}: {taken} papers")
+                if added_in_page == 0 and len(page) < PAGE_SIZE:
+                    break
+            print(f"{category} {year}: {taken}/{per_cell} papers (total collected: {len(records)})")
+            if checkpoint_path:
+                save(records, checkpoint_path)
+
     return records
 
 
 def save(records: list[dict], path: Path = OUTPUT_PATH) -> None:
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(records, ensure_ascii=False, indent=1), encoding="utf-8")
+    temp_path = path.with_suffix(".tmp")
+    temp_path.write_text(json.dumps(records, ensure_ascii=False, indent=1), encoding="utf-8")
+    temp_path.replace(path)
 
 
-def load(path: Path = OUTPUT_PATH) -> list[dict]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+def load(path: Path | None = None) -> list[dict]:
+    if path is not None:
+        target = Path(path)
+    elif OUTPUT_PATH_10000.exists():
+        target = OUTPUT_PATH_10000
+    else:
+        target = OUTPUT_PATH_1000
+    return json.loads(target.read_text(encoding="utf-8"))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--per-cell", type=int, default=PER_CELL,
+    parser.add_argument("--per-cell", type=int, default=PER_CELL_10000,
                         help="papers per (category, year) pair (default: %(default)s)")
-    parser.add_argument("--output", type=Path, default=OUTPUT_PATH)
+    parser.add_argument("--output", type=Path, default=OUTPUT_PATH_10000)
+    parser.add_argument("--seed", type=Path, default=OUTPUT_PATH_1000,
+                        help="Path to initial dataset to preserve (default: %(default)s)")
     args = parser.parse_args()
-    records = collect(per_cell=args.per_cell)
+
+    seed_records = load(args.seed) if args.seed.exists() else None
+    records = collect(per_cell=args.per_cell, seed_records=seed_records, checkpoint_path=args.output)
     save(records, args.output)
-    print(f"Saved {len(records)} records to {args.output}")
+    print(f"Successfully saved {len(records)} records to {args.output}")
 
 
 if __name__ == "__main__":

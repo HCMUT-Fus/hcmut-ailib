@@ -70,3 +70,26 @@ def test_reset_filters_restores_defaults(app):
     assert not app.exception
     assert len(card_titles(app)) == 10
 
+
+def test_similar_tab_quick_suggestion_and_invalid_id(app):
+    # 1. Invalid ID shows error without crashing
+    app.text_input(key="similar_to").input("9999.99999").run()
+    assert not app.exception
+    assert any("not in the index" in e.value for e in app.error)
+
+    # 2. Selecting from seed picker populates similar_to and finds papers
+    seed_box = app.selectbox(key="seed_picker")
+    seed_box.select_index(0).run()
+    assert not app.exception
+    assert len(card_titles(app)) > 0
+
+
+def test_card_has_match_score_tooltip(app):
+    app.sidebar.slider[0].set_value(1)
+    app.text_input(key="query").input("transformer attention").run()
+    assert not app.exception
+    match_metrics = [m for m in app.metric if m.label == "Match"]
+    assert len(match_metrics) > 0
+    assert len(match_metrics[0].help) > 0
+
+

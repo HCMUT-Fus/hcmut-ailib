@@ -13,9 +13,16 @@ def analyze(text: str) -> list[str]:
 
 
 class BM25:
-    def __init__(self, papers: list[dict], k1: float = 1.5, b: float = 0.75):
+    def __init__(self, papers: list[dict], k1: float = 1.5, b: float = 0.75, title_weight: int = 1):
         self.ids = [p["id"] for p in papers]
-        self.docs = [Counter(analyze(f"{p['title']} {p['abstract']}")) for p in papers]
+        self.title_weight = title_weight
+        if title_weight > 1:
+            self.docs = [
+                Counter(analyze(p.get("title", "")) * title_weight + analyze(p.get("abstract", "")))
+                for p in papers
+            ]
+        else:
+            self.docs = [Counter(analyze(f"{p['title']} {p['abstract']}")) for p in papers]
         self.lengths = [sum(d.values()) for d in self.docs]
         self.avg_length = sum(self.lengths) / len(self.docs)
         self.k1, self.b = k1, b

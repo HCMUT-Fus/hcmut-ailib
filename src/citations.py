@@ -5,13 +5,27 @@ from __future__ import annotations
 import re
 
 from src.search_engine import Paper
+from src.text_utils import is_vietnamese_surname, strip_accents
 
 
 def split_name(full_name: str) -> tuple[str, list[str]]:
-    """'Nguyen Van An' -> ('An', ['Nguyen', 'Van']): last token is the family name."""
+    """Split an author's name into (family_name, [given_names...]).
+
+    Heuristic for Vietnamese names:
+    If the first word is a recognized Vietnamese surname (e.g. 'Nguyễn', 'Trần', 'Lê'),
+    the first word is the family name and following words are middle/given names:
+        'Nguyen Van An' -> ('Nguyen', ['Van', 'An'])
+        'Nguyễn Văn An' -> ('Nguyễn', ['Văn', 'An'])
+
+    For other naming conventions (standard Western):
+        'Alan Mathison Turing' -> ('Turing', ['Alan', 'Mathison'])
+        'Plato' -> ('Plato', [])
+    """
     parts = full_name.split()
     if len(parts) <= 1:
         return full_name, []
+    if is_vietnamese_surname(parts[0]):
+        return parts[0], parts[1:]
     return parts[-1], parts[:-1]
 
 
@@ -28,8 +42,9 @@ def arxiv_doi(paper: Paper) -> str:
 
 def bibtex_key(paper: Paper) -> str:
     family = split_name(paper.authors[0])[0] if paper.authors else "anon"
+    family_ascii = strip_accents(family) or "anon"
     word = next((w for w in re.findall(r"[A-Za-z]+", paper.title) if len(w) > 3), "paper")
-    return re.sub(r"[^a-z0-9]", "", f"{family}{paper.year}{word}".lower())
+    return re.sub(r"[^a-z0-9]", "", f"{family_ascii}{paper.year}{word}".lower())
 
 
 def to_bibtex(paper: Paper) -> str:
