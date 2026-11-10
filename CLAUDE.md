@@ -21,7 +21,7 @@ python -m venv .venv                         # or: py -3.12 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 .venv\Scripts\python -m src.indexer          # build index (~1 min, downloads 90 MB model once)
 .venv\Scripts\streamlit run src/app.py       # http://localhost:8501
-.venv\Scripts\python -m pytest -q            # 31 tests; retrieval/UI tests skip without index
+.venv\Scripts\python -m pytest -q            # 32 tests; retrieval/UI tests skip without index
 .venv\Scripts\python -m ruff check src tests --select E9,F   # same lint as CI
 .venv\Scripts\python -m src.evaluate         # benchmark → reports/results/evaluation.json
 ```
@@ -37,7 +37,7 @@ Git Bash: replace `\` with `/` (`.venv/Scripts/...`). Linux/macOS: replace `.ven
 | `src/search_engine.py` | `SearchEngine.search/similar/get`, `build_where` filters, score = (1+cos)/2 |
 | `src/citations.py`, `src/keywords.py` | BibTeX/APA/IEEE; TF-IDF key terms |
 | `src/lexical_baseline.py`, `src/metrics.py`, `src/evaluate.py` | BM25 baseline, MRR/P@k, benchmark |
-| `src/app.py` | Streamlit UI (tabs: Search, Similar papers, About) |
+| `src/app.py` | Dark-mode Streamlit workbench (tabs: Semantic Search, Similar Papers, Reading List, Corpus & Benchmark, System & About) |
 
 Invariants:
 - Indexer and search must use the same `indexer.MODEL_NAME`; changing it requires a rebuild.
@@ -45,9 +45,10 @@ Invariants:
 - Author filtering is done in Python after retrieval (Chroma can't substring-match).
 - `src/app.py` inserts the repo root into `sys.path`, so `streamlit run src/app.py` works
   from the root; modules import each other as `from src import ...`.
-- `src/app.py` uses `on_click` (`_select_similar`) for "Find similar" buttons and `on_change`
-  callbacks between `st.pills` (`key="example"`) and `st.text_input` (`key="query"`), so widget
-  state updates before tabs render; `similar_tab` strips `arXiv:` prefixes, URLs and `vN`
+- `src/app.py` uses `on_click` (`_select_similar`, `_reset_filters`, `_clear_query`) and
+  `on_change` callbacks between `st.pills` (`key="example"`) and `st.text_input` (`key="query"`),
+  as well as between `st.selectbox` (`key="seed_picker"`) and `st.text_input` (`key="similar_to"`),
+  so widget state updates before tabs render; `similar_tab` strips `arXiv:` prefixes, URLs and `vN`
   version suffixes via `ingest.parse_arxiv_id`.
 - `tests/benchmark_queries.json` labels are tied to the committed dataset; re-running
   `src.ingest` changes the data and invalidates them.

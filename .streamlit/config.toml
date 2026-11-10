@@ -5,3 +5,12 @@ gatherUsageStats = false
 [client]
 # Hide the "Deploy" button; this is a local-only app.
 toolbarMode = "viewer"
+
+[theme]
+# Default to a professional dark academic research workbench theme.
+base = "dark"
+primaryColor = "#38BDF8"
+backgroundColor = "#0B0F19"
+secondaryBackgroundColor = "#111827"
+textColor = "#F1F5F9"
+font = "sans serif"

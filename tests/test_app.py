@@ -58,3 +58,15 @@ def test_filters_without_matches_show_warning(app):
     app.text_input(key="query").input("graph neural networks").run()
     assert card_titles(app) == []
     assert any("No papers match" in w.value for w in app.warning)
+
+
+def test_reset_filters_restores_defaults(app):
+    app.sidebar.slider[0].set_value(4)
+    app.sidebar.text_input[0].input("zzzz-no-such-author").run()
+    app.text_input(key="query").input("graph neural networks").run()
+    assert card_titles(app) == []
+    reset_btn = next(b for b in app.sidebar.button if "Reset filters" in b.label)
+    reset_btn.click().run()
+    assert not app.exception
+    assert len(card_titles(app)) == 10
+
