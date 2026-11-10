@@ -19,16 +19,15 @@ sys.path.insert(0, str(REPO_ROOT))
 from src import indexer, ingest  # noqa: E402
 from src.citations import FORMATS, bibtex_key  # noqa: E402
 from src.keywords import KeywordExtractor  # noqa: E402
-from src.lexical_baseline import BM25  # noqa: E402
 from src.search_engine import Paper, SearchEngine, SearchResult  # noqa: E402
 
 CATEGORY_NAMES = {
     "cs.AI": "Artificial Intelligence",
     "cs.LG": "Machine Learning",
     "cs.CL": "Computation and Language",
+    "cs.IR": "Information Retrieval",
     "cs.CV": "Computer Vision",
     "cs.RO": "Robotics",
-    "cs.IR": "Information Retrieval",
     "cs.HC": "Human-Computer Interaction",
     "cs.CR": "Cryptography and Security",
     "cs.CY": "Computers and Society",
@@ -41,6 +40,8 @@ CATEGORY_NAMES = {
     "eess.AS": "Audio and Speech Processing",
     "eess.IV": "Image and Video Processing",
 }
+CORE_CATEGORIES = ("cs.AI", "cs.LG", "cs.CL", "cs.IR")
+
 EXAMPLE_QUERIES = [
     "detecting fake news on social media",
     "making transformers cheaper for long documents",
@@ -57,8 +58,10 @@ RETRIEVAL_MODES = (
 )
 SORT_OPTIONS = ("Relevance", "Newest first", "Oldest first", "Title (A–Z)")
 VIEW_MODES = ("Detailed Cards", "Cards + Comparison Matrix", "Compact Cards")
-ABSTRACT_PREVIEW = 300
+ABSTRACT_PREVIEW = 320
+
 EVAL_JSON_PATH = REPO_ROOT / "reports" / "results" / "evaluation.json"
+SCIFACT_JSON_PATH = REPO_ROOT / "reports" / "results" / "scifact_evaluation.json"
 PCA_FIG_PATH = REPO_ROOT / "reports" / "figures" / "embedding_pca.png"
 ARCH_FIG_PATH = REPO_ROOT / "docs" / "architecture.png"
 
@@ -66,189 +69,394 @@ st.set_page_config(page_title="HCMUT-AILib", page_icon="📚", layout="wide")
 
 
 def inject_styles() -> None:
-    """Apply dark-mode research workbench styling for header, cards, badges, and panels."""
+    """Apply vibrant multi-color dark-mode styling with keyframe animations and motion."""
     st.html("""
     <style>
-        /* Root & container layout */
+        /* Keyframe Animations */
+        @keyframes auroraBg {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes rainbowFlow {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes pulseBeacon {
+            0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 8px currentColor; }
+            50%      { transform: scale(1.32); opacity: 0.78; box-shadow: 0 0 16px currentColor; }
+        }
+        @keyframes cardEntrance {
+            0%   { opacity: 0; transform: translateY(12px) scale(0.992); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes floatBadge {
+            0%, 100% { transform: translateY(0px); }
+            50%      { transform: translateY(-3px); }
+        }
+        @keyframes streamPulse {
+            0%   { opacity: 0.35; transform: translateX(-3px); }
+            50%  { opacity: 1; transform: translateX(3px); }
+            100% { opacity: 0.35; transform: translateX(-3px); }
+        }
+
+        /* Root & Animated Multi-Color Aurora Background */
         .stApp {
-            background: radial-gradient(circle at 15% 0%, #111c35 0%, #0b0f19 55%, #070a12 100%);
+            background:
+                radial-gradient(circle at 12% 8%, rgba(56, 189, 248, 0.14) 0%, transparent 38%),
+                radial-gradient(circle at 88% 12%, rgba(168, 85, 247, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.10) 0%, transparent 45%),
+                linear-gradient(135deg, #070b14 0%, #0d1326 35%, #111827 70%, #090d18 100%);
+            background-size: 200% 200%;
+            animation: auroraBg 18s ease infinite;
             color: #f1f5f9;
         }
+        header[data-testid="stHeader"] {
+            background: rgba(9, 13, 24, 0.72) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(139, 92, 246, 0.22);
+        }
         .block-container {
-            padding-top: 1.4rem;
-            padding-bottom: 3.5rem;
-            max-width: 1280px;
+            padding-top: 3.75rem !important;
+            padding-bottom: 3.5rem !important;
+            max-width: 1280px !important;
         }
         section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #0f172a 0%, #0b1120 100%);
-            border-right: 1px solid rgba(56, 189, 248, 0.16);
+            background: linear-gradient(180deg, #0b1120 0%, #11162b 55%, #090d1a 100%);
+            border-right: 1px solid rgba(139, 92, 246, 0.28);
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
         }
 
-        /* Hide the raw default h1 spacing & integrate with custom hero banner */
+        /* Crisp h1 title that preserves full-color emoji rendering */
         h1 {
-            font-size: 2.05rem !important;
+            font-size: 2.15rem !important;
             font-weight: 800 !important;
-            letter-spacing: -0.025em !important;
-            margin-top: -0.35rem !important;
-            margin-bottom: 0.15rem !important;
-            background: linear-gradient(90deg, #f8fafc 0%, #7dd3fc 55%, #38bdf8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em !important;
+            line-height: 1.2 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0.2rem !important;
+            padding-top: 0 !important;
+            color: #f8fafc !important;
+            text-shadow: 0 0 24px rgba(56, 189, 248, 0.28);
         }
 
-        /* Professional Institutional Header Banner */
-        .ailib-hero {
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.88) 55%, rgba(12, 74, 110, 0.85) 100%);
-            border: 1px solid rgba(56, 189, 248, 0.28);
-            border-radius: 16px;
-            padding: 1.15rem 1.45rem 1.05rem 1.45rem;
+        /* Animated Rainbow Shimmer Ribbon at top of Hero Header */
+        .ailib-rainbow-bar {
+            height: 4px;
+            width: 100%;
+            border-radius: 999px;
+            background: linear-gradient(
+                90deg,
+                #06b6d4,
+                #3b82f6,
+                #8b5cf6,
+                #ec4899,
+                #f59e0b,
+                #10b981,
+                #06b6d4
+            );
+            background-size: 300% 100%;
+            animation: rainbowFlow 6s linear infinite;
             margin-bottom: 0.75rem;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 0 14px rgba(139, 92, 246, 0.45);
         }
-        .ailib-hero::before {
-            content: "";
-            position: absolute;
-            top: -60px;
-            right: -60px;
-            width: 220px;
-            height: 220px;
-            background: radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        .ailib-eyebrow-row {
+
+        /* Top institutional status strip inside header container */
+        .ailib-topbar {
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
-            gap: 0.6rem;
-            margin-bottom: 0.45rem;
+            gap: 0.65rem;
+            padding-bottom: 0.7rem;
+            margin-bottom: 0.65rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.18);
         }
         .ailib-inst-tag {
             display: inline-flex;
             align-items: center;
             gap: 0.45rem;
-            font-size: 0.73rem;
+            font-size: 0.74rem;
             font-weight: 700;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: #93c5fd;
-            background: rgba(30, 58, 138, 0.45);
-            border: 1px solid rgba(96, 165, 250, 0.35);
-            padding: 0.24rem 0.68rem;
+            color: #e0e7ff;
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.42), rgba(124, 58, 237, 0.42));
+            border: 1px solid rgba(129, 140, 248, 0.48);
+            padding: 0.28rem 0.82rem;
             border-radius: 999px;
+            box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
         }
         .ailib-status-strip {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.45rem;
+            gap: 0.48rem;
             align-items: center;
         }
         .ailib-pill {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
+            gap: 0.38rem;
             font-size: 0.72rem;
             font-weight: 600;
-            padding: 0.22rem 0.62rem;
+            padding: 0.24rem 0.68rem;
             border-radius: 999px;
-            background: rgba(15, 23, 42, 0.75);
-            border: 1px solid rgba(148, 163, 184, 0.25);
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.28);
             color: #e2e8f0;
+            white-space: nowrap;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .ailib-pill:hover {
+            transform: translateY(-2px);
         }
         .ailib-pill-online {
-            border-color: rgba(52, 211, 153, 0.45);
+            border-color: rgba(52, 211, 153, 0.55);
             color: #6ee7b7;
-            background: rgba(6, 78, 59, 0.35);
+            background: linear-gradient(135deg, rgba(6, 78, 59, 0.50), rgba(16, 185, 129, 0.18));
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.20);
         }
         .ailib-pill-cyan {
-            border-color: rgba(56, 189, 248, 0.45);
+            border-color: rgba(56, 189, 248, 0.55);
             color: #7dd3fc;
-            background: rgba(12, 74, 110, 0.35);
+            background: linear-gradient(135deg, rgba(12, 74, 110, 0.52), rgba(56, 189, 248, 0.18));
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.20);
+        }
+        .ailib-pill-violet {
+            border-color: rgba(192, 132, 252, 0.55);
+            color: #e9d5ff;
+            background: linear-gradient(135deg, rgba(88, 28, 135, 0.50), rgba(168, 85, 247, 0.20));
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.20);
+        }
+        .ailib-pill-amber {
+            border-color: rgba(251, 191, 36, 0.55);
+            color: #fde68a;
+            background: linear-gradient(135deg, rgba(120, 53, 15, 0.50), rgba(245, 158, 11, 0.20));
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.18);
         }
         .ailib-dot {
-            width: 7px;
-            height: 7px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background: #10b981;
-            box-shadow: 0 0 8px #10b981;
+            color: #10b981;
             display: inline-block;
+            animation: pulseBeacon 2s ease-in-out infinite;
         }
-        .ailib-hero-grid {
+
+        /* Multi-Color KPI Boxes in Header */
+        .ailib-kpi-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 0.65rem;
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid rgba(148, 163, 184, 0.16);
         }
         .ailib-stat-box {
-            background: rgba(15, 23, 42, 0.62);
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            border-radius: 10px;
-            padding: 0.48rem 0.72rem;
+            background: rgba(15, 23, 42, 0.80);
+            border-radius: 12px;
+            padding: 0.58rem 0.78rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+        }
+        .ailib-stat-box:hover {
+            transform: translateY(-3px);
+        }
+        .ailib-stat-cyan {
+            border: 1px solid rgba(56, 189, 248, 0.42);
+            border-top: 3px solid #38bdf8;
+            box-shadow: 0 6px 18px rgba(56, 189, 248, 0.12);
+        }
+        .ailib-stat-violet {
+            border: 1px solid rgba(168, 85, 247, 0.42);
+            border-top: 3px solid #a855f7;
+            box-shadow: 0 6px 18px rgba(168, 85, 247, 0.14);
+        }
+        .ailib-stat-emerald {
+            border: 1px solid rgba(16, 185, 129, 0.42);
+            border-top: 3px solid #10b981;
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.12);
         }
         .ailib-stat-label {
             font-size: 0.68rem;
             text-transform: uppercase;
             letter-spacing: 0.06em;
-            color: #94a3b8;
-            margin-bottom: 0.12rem;
+            color: #cbd5e1;
+            margin-bottom: 0.1rem;
         }
         .ailib-stat-val {
-            font-size: 0.98rem;
-            font-weight: 700;
-            color: #f8fafc;
+            font-size: 1.08rem;
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.25;
         }
-        .ailib-stat-sub {
+        .ailib-stat-sub-cyan {
             font-size: 0.7rem;
             color: #38bdf8;
-            font-weight: 500;
+            font-weight: 600;
+            margin-top: 0.1rem;
+        }
+        .ailib-stat-sub-violet {
+            font-size: 0.7rem;
+            color: #c084fc;
+            font-weight: 600;
+            margin-top: 0.1rem;
+        }
+        .ailib-stat-sub-emerald {
+            font-size: 0.7rem;
+            color: #34d399;
+            font-weight: 600;
+            margin-top: 0.1rem;
         }
 
-        /* Bordered Containers / Cards */
+        /* Animated Live Neural Pipeline Strip */
+        .ailib-pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.45rem;
+            margin-top: 0.7rem;
+            padding: 0.55rem 0.85rem;
+            border-radius: 10px;
+            background: linear-gradient(90deg, rgba(15, 23, 42, 0.9), rgba(30, 27, 75, 0.75), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(129, 140, 248, 0.25);
+        }
+        .ailib-stage {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.38rem;
+            font-size: 0.73rem;
+            font-weight: 600;
+            padding: 0.22rem 0.62rem;
+            border-radius: 8px;
+            background: rgba(30, 41, 59, 0.65);
+            color: #94a3b8;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            transition: all 0.25s ease;
+        }
+        .ailib-stage-active-cyan {
+            background: rgba(6, 182, 212, 0.18);
+            color: #67e8f9;
+            border-color: rgba(34, 211, 238, 0.5);
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.22);
+        }
+        .ailib-stage-active-violet {
+            background: rgba(139, 92, 246, 0.20);
+            color: #ddd6fe;
+            border-color: rgba(167, 139, 250, 0.55);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
+        }
+        .ailib-stage-active-pink {
+            background: rgba(236, 72, 153, 0.20);
+            color: #fbcfe8;
+            border-color: rgba(244, 114, 182, 0.55);
+            box-shadow: 0 0 12px rgba(236, 72, 153, 0.25);
+        }
+        .ailib-stage-active-emerald {
+            background: rgba(16, 185, 129, 0.20);
+            color: #a7f3d0;
+            border-color: rgba(52, 211, 153, 0.55);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+        }
+        .ailib-arrow {
+            color: #818cf8;
+            font-size: 0.85rem;
+            font-weight: 700;
+            animation: streamPulse 1.6s ease-in-out infinite;
+        }
+
+        /* Bordered Containers / Cards with Entrance Motion & Multi-Color Glow */
         div[data-testid="stVerticalBlockBorderWrapper"] {
-            background: rgba(17, 24, 39, 0.78);
-            border: 1px solid rgba(56, 189, 248, 0.18) !important;
+            background: linear-gradient(145deg, rgba(17, 24, 39, 0.88) 0%, rgba(15, 23, 42, 0.92) 100%);
+            border: 1px solid rgba(56, 189, 248, 0.24) !important;
             border-radius: 14px !important;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+            animation: cardEntrance 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+            transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+                        border-color 0.22s ease,
+                        box-shadow 0.22s ease;
         }
         div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-            border-color: rgba(56, 189, 248, 0.48) !important;
-            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.14);
+            transform: translateY(-3px);
+            border-color: rgba(168, 85, 247, 0.55) !important;
+            box-shadow:
+                0 10px 26px -6px rgba(56, 189, 248, 0.20),
+                0 6px 18px -4px rgba(168, 85, 247, 0.18);
         }
 
-        /* Metrics */
+        /* Animated Multi-Color Progress Bars for Match Scores */
+        div[data-testid="stProgress"] > div > div > div > div {
+            background: linear-gradient(
+                90deg,
+                #06b6d4 0%,
+                #8b5cf6 45%,
+                #ec4899 75%,
+                #10b981 100%
+            ) !important;
+            background-size: 200% 100% !important;
+            animation: rainbowFlow 4s linear infinite !important;
+            border-radius: 999px !important;
+        }
+
+        /* Metrics with Colorful Borders & Hover Lift */
         div[data-testid="stMetric"] {
-            background: rgba(15, 23, 42, 0.65);
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            border-radius: 10px;
-            padding: 0.45rem 0.65rem;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 27, 75, 0.45));
+            border: 1px solid rgba(99, 102, 241, 0.32);
+            border-radius: 12px;
+            padding: 0.5rem 0.72rem;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        div[data-testid="stMetric"]:hover {
+            transform: translateY(-2px);
+            border-color: rgba(56, 189, 248, 0.6);
+            box-shadow: 0 6px 18px rgba(56, 189, 248, 0.16);
         }
         div[data-testid="stMetricValue"] {
-            color: #38bdf8 !important;
-            font-weight: 700 !important;
+            background: linear-gradient(90deg, #38bdf8, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800 !important;
         }
 
-        /* Tabs bar */
+        /* Interactive Buttons & Link Buttons */
+        .stButton > button, .stLinkButton > a, .stDownloadButton > button {
+            border-radius: 10px !important;
+            border: 1px solid rgba(99, 102, 241, 0.32) !important;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.92)) !important;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease !important;
+        }
+        .stButton > button:hover, .stLinkButton > a:hover, .stDownloadButton > button:hover {
+            transform: translateY(-2px) !important;
+            border-color: rgba(56, 189, 248, 0.68) !important;
+            box-shadow: 0 6px 16px rgba(56, 189, 248, 0.22), 0 0 10px rgba(168, 85, 247, 0.16) !important;
+        }
+
+        /* Tabs bar with Gradient Active Indicator */
         div[data-baseweb="tab-list"] {
-            gap: 0.35rem;
-            background: rgba(15, 23, 42, 0.75);
-            padding: 0.35rem;
+            gap: 0.4rem;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 0.4rem;
             border-radius: 12px;
-            border: 1px solid rgba(148, 163, 184, 0.16);
+            border: 1px solid rgba(139, 92, 246, 0.28);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
         }
         button[data-baseweb="tab"] {
             font-weight: 600 !important;
             font-size: 0.9rem !important;
             padding: 0.5rem 1rem !important;
-            border-radius: 8px !important;
+            border-radius: 9px !important;
             color: #94a3b8 !important;
+            transition: all 0.2s ease !important;
+        }
+        button[data-baseweb="tab"]:hover {
+            color: #e2e8f0 !important;
+            background: rgba(99, 102, 241, 0.12) !important;
         }
         button[data-baseweb="tab"][aria-selected="true"] {
-            background: rgba(56, 189, 248, 0.15) !important;
-            color: #38bdf8 !important;
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.24), rgba(139, 92, 246, 0.28)) !important;
+            color: #f8fafc !important;
+            border: 1px solid rgba(56, 189, 248, 0.45) !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.22) !important;
         }
 
         /* Sidebar section header chips */
@@ -257,36 +465,12 @@ def inject_styles() -> None:
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #38bdf8;
-            margin-top: 0.6rem;
-            margin-bottom: 0.3rem;
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-        .tier-chip {
+            background: linear-gradient(90deg, #38bdf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-top: 0.55rem;
+            margin-bottom: 0.28rem;
             display: inline-block;
-            font-size: 0.7rem;
-            font-weight: 700;
-            padding: 0.14rem 0.52rem;
-            border-radius: 999px;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-        .tier-high {
-            background: rgba(16, 185, 129, 0.18);
-            color: #34d399;
-            border: 1px solid rgba(52, 211, 153, 0.4);
-        }
-        .tier-med {
-            background: rgba(56, 189, 248, 0.18);
-            color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.4);
-        }
-        .tier-low {
-            background: rgba(245, 158, 11, 0.18);
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.4);
         }
     </style>
     """)
@@ -300,11 +484,6 @@ def get_engine() -> SearchEngine:
 @st.cache_resource
 def get_keyword_extractor() -> KeywordExtractor:
     return KeywordExtractor([p["abstract"] for p in ingest.load()])
-
-
-@st.cache_resource
-def get_bm25_engine() -> BM25:
-    return BM25(ingest.load())
 
 
 @st.cache_data
@@ -338,12 +517,22 @@ def load_evaluation_data() -> dict | None:
 
 
 @st.cache_data
+def load_scifact_data() -> dict | None:
+    if SCIFACT_JSON_PATH.exists():
+        try:
+            return json.loads(SCIFACT_JSON_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+    return None
+
+
+@st.cache_data
 def corpus_statistics() -> dict:
     records = load_raw_corpus()
     by_year = Counter(int(r["published_date"][:4]) for r in records)
     by_primary = Counter(r["primary_category"] for r in records)
     by_sampled_cat = Counter(
-        cat for r in records for cat in r["categories"] if cat in CATEGORY_NAMES
+        cat for r in records for cat in r["categories"] if cat in CORE_CATEGORIES
     )
     doi_count = sum(1 for r in records if r.get("doi"))
     word_counts = [len(r["abstract"].split()) for r in records]
@@ -351,8 +540,8 @@ def corpus_statistics() -> dict:
     return {
         "total": len(records),
         "by_year": dict(sorted(by_year.items())),
-        "by_primary": dict(by_primary.most_common(8)),
-        "by_sampled_cat": {c: by_sampled_cat[c] for c in CATEGORY_NAMES},
+        "by_primary": dict(by_primary.most_common(10)),
+        "by_sampled_cat": {c: by_sampled_cat[c] for c in CORE_CATEGORIES},
         "doi_count": doi_count,
         "doi_pct": (doi_count / len(records) * 100.0) if records else 0.0,
         "avg_words": sum(word_counts) / len(word_counts) if word_counts else 0.0,
@@ -432,6 +621,7 @@ def _reset_filters(lo: int, hi: int) -> None:
     st.session_state.filter_categories = []
     st.session_state.filter_author = ""
     st.session_state.retrieval_mode = RETRIEVAL_MODES[0]
+    st.session_state.use_rerank = False
     st.session_state.min_score_pct = 0
     st.session_state.sort_by = SORT_OPTIONS[0]
     st.session_state.view_mode = VIEW_MODES[0]
@@ -449,23 +639,37 @@ def record_query_history(query: str) -> None:
     st.session_state.query_history = hist[:8]
 
 
+CATEGORY_BADGE_COLORS = {
+    "cs.AI": "violet",
+    "cs.LG": "blue",
+    "cs.CL": "green",
+    "cs.IR": "orange",
+    "cs.CV": "red",
+    "cs.RO": "violet",
+    "cs.HC": "green",
+    "cs.CR": "red",
+    "stat.ML": "blue",
+}
+
+
 def format_category_badges(paper: Paper) -> str:
     badges = []
     for idx, cat in enumerate(paper.categories):
+        color = CATEGORY_BADGE_COLORS.get(cat, "blue" if cat in CATEGORY_NAMES else "gray")
         if cat in CATEGORY_NAMES:
             label = f"{cat} · {CATEGORY_NAMES[cat]}" if idx == 0 else cat
-            badges.append(f":blue-badge[{label}]")
+            badges.append(f":{color}-badge[{label}]")
         else:
             badges.append(f":gray-badge[{cat}]")
     return " ".join(badges)
 
 
-def confidence_tier_html(score: float) -> str:
+def confidence_badge(score: float) -> str:
     if score >= 0.78:
-        return '<span class="tier-chip tier-high">● High Match</span>'
+        return ":green-badge[High Match]"
     if score >= 0.68:
-        return '<span class="tier-chip tier-med">● Moderate Match</span>'
-    return '<span class="tier-chip tier-low">● Exploratory</span>'
+        return ":blue-badge[Moderate Match]"
+    return ":orange-badge[Exploratory]"
 
 
 def format_active_filters(
@@ -476,10 +680,13 @@ def format_active_filters(
     min_score_pct: int = 0,
     only_doi: bool = False,
     retrieval_mode: str = RETRIEVAL_MODES[0],
+    use_rerank: bool = False,
 ) -> list[str]:
     summary: list[str] = []
     if retrieval_mode != RETRIEVAL_MODES[0]:
         summary.append(f"Mode: {retrieval_mode.split(' (')[0]}")
+    if use_rerank:
+        summary.append("Cross-Encoder Rerank")
     if years != bounds:
         summary.append(
             f"Year: {years[0]}" if years[0] == years[1] else f"Years: {years[0]}–{years[1]}"
@@ -500,13 +707,17 @@ def paper_matches_filters(
     year_range: tuple[int, int] | None,
     categories: list[str] | None,
     author: str | None,
+    engine: SearchEngine | None = None,
 ) -> bool:
     if year_range and not (year_range[0] <= paper.year <= year_range[1]):
         return False
     if categories and not any(c in paper.categories for c in categories):
         return False
-    if author and author.strip().lower() not in "; ".join(paper.authors).lower():
-        return False
+    if author:
+        if engine is not None:
+            return paper.id in engine.author_index.match(author)
+        if author.strip().lower() not in "; ".join(paper.authors).lower():
+            return False
     return True
 
 
@@ -518,8 +729,9 @@ def execute_retrieval(
     year_range: tuple[int, int] | None,
     categories: list[str] | None,
     author: str | None,
+    rerank: bool = False,
 ) -> list[SearchResult]:
-    """Run semantic, BM25, or Reciprocal Rank Fusion (RRF) hybrid retrieval."""
+    """Run semantic, hybrid RRF, or Okapi BM25 retrieval via SearchEngine."""
     if retrieval_mode.startswith("Dense Semantic"):
         return engine.search(
             query,
@@ -527,66 +739,39 @@ def execute_retrieval(
             year_range=year_range,
             categories=categories,
             author=author,
+            rerank=rerank,
         )
 
-    bm25 = get_bm25_engine()
+    if retrieval_mode.startswith("Hybrid RRF"):
+        return engine.hybrid_search(
+            query,
+            top_k=top_k,
+            year_range=year_range,
+            categories=categories,
+            author=author,
+            rerank=rerank,
+        )
+
+    # Lexical Baseline (Okapi BM25)
+    bm25 = engine.bm25
     raw_scores = bm25.scores(query)
     max_bm25 = max(raw_scores) if raw_scores else 0.0
-
-    if retrieval_mode == "Lexical Baseline (Okapi BM25)":
-        ranked = sorted(zip(raw_scores, bm25.ids), key=lambda x: -x[0])
-        results: list[SearchResult] = []
-        for sc, pid in ranked:
-            if sc <= 0:
-                break
-            paper = engine.get(pid)
-            if not paper_matches_filters(paper, year_range, categories, author):
-                continue
-            norm_sc = min(0.99, max(0.05, sc / max_bm25)) if max_bm25 > 0 else 0.0
-            results.append(SearchResult(paper=paper, score=norm_sc, rank=len(results) + 1))
-            if len(results) == top_k:
-                break
-        return results
-
-    # Hybrid RRF (Semantic + BM25)
-    pool_k = max(top_k * 4, 40)
-    sem_results = engine.search(
-        query,
-        top_k=pool_k,
-        year_range=year_range,
-        categories=categories,
-        author=author,
-    )
-    sem_map = {r.paper.id: (r.rank, r.score, r.paper) for r in sem_results}
-
-    bm25_ranked = [
-        (pid, sc) for sc, pid in sorted(zip(raw_scores, bm25.ids), key=lambda x: -x[0]) if sc > 0
-    ]
-    bm25_rank_map = {pid: idx + 1 for idx, (pid, _) in enumerate(bm25_ranked[:pool_k])}
-
-    candidate_ids = list(dict.fromkeys(list(sem_map) + list(bm25_rank_map)))
-    rrf_scored: list[tuple[float, float, Paper]] = []
-    rrf_k = 60.0
-    for pid in candidate_ids:
-        if pid in sem_map:
-            s_rank, s_score, paper = sem_map[pid]
-        else:
-            paper = engine.get(pid)
-            if not paper_matches_filters(paper, year_range, categories, author):
-                continue
-            s_rank, s_score = pool_k + 50, 0.50
-        b_rank = bm25_rank_map.get(pid, pool_k + 50)
-        rrf = (1.0 / (rrf_k + s_rank)) + (1.0 / (rrf_k + b_rank))
-        # Rescale display score blending semantic similarity with lexical boost
-        boost = 0.04 if pid in bm25_rank_map else 0.0
-        display_score = min(0.99, s_score + boost)
-        rrf_scored.append((rrf, display_score, paper))
-
-    rrf_scored.sort(key=lambda item: (-item[0], -item[1]))
-    return [
-        SearchResult(paper=paper, score=disp_score, rank=idx + 1)
-        for idx, (_, disp_score, paper) in enumerate(rrf_scored[:top_k])
-    ]
+    ranked = sorted(zip(raw_scores, bm25.ids), key=lambda x: -x[0])
+    fetch_k = max(top_k * 2, 15) if rerank else top_k
+    results: list[SearchResult] = []
+    for sc, pid in ranked:
+        if sc <= 0:
+            break
+        paper = engine.get(pid)
+        if not paper_matches_filters(paper, year_range, categories, author, engine=engine):
+            continue
+        norm_sc = min(0.99, max(0.05, sc / max_bm25)) if max_bm25 > 0 else 0.0
+        results.append(SearchResult(paper=paper, score=norm_sc, rank=len(results) + 1))
+        if len(results) == fetch_k:
+            break
+    if rerank and results:
+        return engine.rerank(query, results, top_k=top_k)
+    return results[:top_k]
 
 
 def results_to_csv(results: list[SearchResult]) -> str:
@@ -616,13 +801,23 @@ def results_to_csv(results: list[SearchResult]) -> str:
 
 
 def render_professional_header(engine: SearchEngine) -> None:
-    """Render a multi-layered institutional dark-mode header with live telemetry."""
+    """Render a unified, vibrant, animated dark-mode institutional header card."""
     stats = corpus_statistics()
     saved_count = len(st.session_state.get("saved_papers", []))
+    mode = st.session_state.get("retrieval_mode", RETRIEVAL_MODES[0])
+    rerank_on = bool(st.session_state.get("use_rerank", False))
 
-    st.html(f"""
-    <div class="ailib-hero">
-        <div class="ailib-eyebrow-row">
+    is_dense = mode.startswith("Dense") or mode.startswith("Hybrid")
+    is_hybrid = mode.startswith("Hybrid") or mode.startswith("Lexical")
+    s1_cls = "ailib-stage ailib-stage-active-cyan" if is_dense else "ailib-stage"
+    s2_cls = "ailib-stage ailib-stage-active-violet" if is_hybrid else "ailib-stage ailib-stage-active-cyan"
+    s3_cls = "ailib-stage ailib-stage-active-pink" if rerank_on else "ailib-stage"
+    s4_cls = "ailib-stage ailib-stage-active-emerald"
+
+    with st.container(border=True):
+        st.html(f"""
+        <div class="ailib-rainbow-bar"></div>
+        <div class="ailib-topbar">
             <span class="ailib-inst-tag">
                 🏛️ HCMUT · Faculty of Computer Science &amp; Engineering · CO2001
             </span>
@@ -633,42 +828,53 @@ def render_professional_header(engine: SearchEngine) -> None:
                 <span class="ailib-pill ailib-pill-cyan">
                     🧠 {indexer.MODEL_NAME} · 384-D
                 </span>
-                <span class="ailib-pill">
+                <span class="ailib-pill ailib-pill-violet">
                     ⚡ ChromaDB HNSW · Cosine
                 </span>
-                <span class="ailib-pill">
-                    🔒 Air-Gapped Local Execution
+                <span class="ailib-pill ailib-pill-amber">
+                    🔒 Air-Gapped Local
                 </span>
             </div>
         </div>
-    </div>
-    """)
+        """)
 
-    title_col, status_col = st.columns([3, 2])
-    with title_col:
-        st.title("📚 HCMUT-AILib")
-        st.caption(
-            "Semantic search & research assistant for open-access academic papers · "
-            "Dense Vector Retrieval Workbench (v1.0.0)"
-        )
-    with status_col:
+        title_col, status_col = st.columns([1.32, 1.68], vertical_alignment="center")
+        with title_col:
+            st.title("📚 HCMUT-AILib")
+            st.caption(
+                "Semantic search & research assistant for open-access academic papers · "
+                "Dense Vector + Hybrid RRF + Cross-Encoder Workbench"
+            )
+        with status_col:
+            st.html(f"""
+            <div class="ailib-kpi-row">
+                <div class="ailib-stat-box ailib-stat-cyan">
+                    <div class="ailib-stat-label">Indexed Corpus</div>
+                    <div class="ailib-stat-val">{len(engine):,} Papers</div>
+                    <div class="ailib-stat-sub-cyan">arXiv 2021–2025 · Stratified</div>
+                </div>
+                <div class="ailib-stat-box ailib-stat-violet">
+                    <div class="ailib-stat-label">Benchmark MRR</div>
+                    <div class="ailib-stat-val">0.911</div>
+                    <div class="ailib-stat-sub-violet">+31.5% vs Okapi BM25</div>
+                </div>
+                <div class="ailib-stat-box ailib-stat-emerald">
+                    <div class="ailib-stat-label">Reading List</div>
+                    <div class="ailib-stat-val">{saved_count} Saved</div>
+                    <div class="ailib-stat-sub-emerald">{stats['doi_pct']:.1f}% Publisher DOIs</div>
+                </div>
+            </div>
+            """)
+
         st.html(f"""
-        <div class="ailib-hero-grid" style="margin-top: 0.15rem; padding-top: 0; border-top: none;">
-            <div class="ailib-stat-box">
-                <div class="ailib-stat-label">Indexed Corpus</div>
-                <div class="ailib-stat-val">{len(engine):,} Papers</div>
-                <div class="ailib-stat-sub">arXiv 2021–2025 · 4 CS Domains</div>
-            </div>
-            <div class="ailib-stat-box">
-                <div class="ailib-stat-label">Benchmark MRR</div>
-                <div class="ailib-stat-val">0.911</div>
-                <div class="ailib-stat-sub">+31.5% vs Okapi BM25 (0.693)</div>
-            </div>
-            <div class="ailib-stat-box">
-                <div class="ailib-stat-label">Session Reading List</div>
-                <div class="ailib-stat-val">{saved_count} Saved</div>
-                <div class="ailib-stat-sub">{stats['doi_pct']:.1f}% Publisher DOI Coverage</div>
-            </div>
+        <div class="ailib-pipeline">
+            <span class="{s1_cls}">1 · 🧬 384-D Neural Embedder</span>
+            <span class="ailib-arrow">━━▶</span>
+            <span class="{s2_cls}">2 · 🧭 {'Hybrid RRF (HNSW + BM25)' if is_hybrid else 'ChromaDB HNSW Cosine'}</span>
+            <span class="ailib-arrow">━━▶</span>
+            <span class="{s3_cls}">3 · 🎯 Cross-Encoder Rerank {'(ON)' if rerank_on else '(Ready)'}</span>
+            <span class="ailib-arrow">━━▶</span>
+            <span class="{s4_cls}">4 · ✨ TF-IDF Key Terms &amp; Citations</span>
         </div>
         """)
 
@@ -681,7 +887,7 @@ def render_card(
     paper = result.paper
     is_saved = paper.id in st.session_state.get("saved_papers", [])
     with st.container(border=True):
-        head, score = st.columns([5.8, 1.2])
+        head, score = st.columns([4.8, 1.2], vertical_alignment="top")
         head.markdown(f"#### {result.rank}. {paper.title}")
         score.metric(
             "Match",
@@ -694,18 +900,20 @@ def render_card(
             f" et al. (+{len(paper.authors) - 6} more)" if len(paper.authors) > 6 else ""
         )
         badges = format_category_badges(paper)
+        tier = confidence_badge(result.score)
         doi_badge = f" :green-badge[DOI: {paper.doi}]" if paper.doi else ""
         head.markdown(
             f"**{authors}** · 📅 `{paper.published_date}` · `arXiv:{paper.id}`  \n"
-            f"{badges}{doi_badge}"
-        )
-        score.html(
-            f"<div style='text-align:right; margin-top:2px;'>{confidence_tier_html(result.score)}</div>"
+            f"{tier} {badges}{doi_badge}"
         )
 
         keywords = get_keyword_extractor().extract(paper.abstract, k=5)
         if keywords:
-            kw_pills = " ".join(f":violet-badge[{kw}]" for kw in keywords)
+            kw_colors = ("violet", "blue", "green", "orange", "red")
+            kw_pills = " ".join(
+                f":{kw_colors[i % len(kw_colors)]}-badge[✦ {kw}]"
+                for i, kw in enumerate(keywords)
+            )
             st.markdown(f"**Key terms:** {kw_pills}")
 
         if not compact:
@@ -787,7 +995,7 @@ def render_onboarding() -> None:
 
     stats = corpus_statistics()
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Stratified Corpus", f"{stats['total']:,} Papers", "50 / category / year")
+    k1.metric("Stratified Corpus", f"{stats['total']:,} Papers", "4 CS domains · 2021–2025")
     k2.metric("Mean Abstract Length", f"{stats['avg_words']:.0f} Words", "Title + Abstract embedded")
     k3.metric("Mean Query Latency", "13.6 ms", "p95: 17.1 ms (CPU)")
     k4.metric("Top-1 Accuracy", "83.3%", "25 / 30 benchmark queries")
@@ -796,10 +1004,10 @@ def render_onboarding() -> None:
     with cols[0]:
         with st.container(border=True):
             st.markdown(
-                "### 🎯 Semantic & Hybrid Modes\n"
-                "Switch seamlessly between **Dense Semantic** (`MongoDB/mdbr-leaf-ir`), "
-                "**Hybrid RRF** (Reciprocal Rank Fusion), and **Okapi BM25** keyword search "
-                "from the sidebar to see how meaning-based search overcomes vocabulary mismatch."
+                "### 🎯 Semantic, Hybrid & Rerank\n"
+                f"Switch between **Dense Semantic** (`{indexer.MODEL_NAME}`), "
+                "**Hybrid RRF** (Reciprocal Rank Fusion), and **Okapi BM25**, plus optional "
+                "**Cross-Encoder Neural Re-ranking** in the sidebar."
             )
     with cols[1]:
         with st.container(border=True):
@@ -909,6 +1117,7 @@ def search_tab(
     filters: dict,
     active_filter_tags: list[str],
     retrieval_mode: str,
+    use_rerank: bool,
     min_score_pct: int,
     sort_by: str,
     view_mode: str,
@@ -964,6 +1173,7 @@ def search_tab(
             engine,
             query=query,
             retrieval_mode=retrieval_mode,
+            rerank=use_rerank,
             **filters,
         )
         elapsed = time.perf_counter() - start
@@ -1239,25 +1449,28 @@ def reading_list_tab(engine: SearchEngine) -> None:
 
 
 def analytics_tab() -> None:
-    st.markdown(
-        "Quantitative overview of the 1,000-paper stratified arXiv corpus and head-to-head "
-        "evaluation benchmarks (`HCMUT-AILib Dense Semantic` vs `Okapi BM25`)."
-    )
     stats = corpus_statistics()
     eval_data = load_evaluation_data()
+    scifact_data = load_scifact_data()
+
+    st.markdown(
+        f"Quantitative overview of the **{stats['total']:,}-paper** stratified arXiv corpus and "
+        "head-to-head evaluation benchmarks (`Dense Semantic`, `Hybrid RRF`, and `Okapi BM25`)."
+    )
 
     c1, c2 = st.columns(2)
     with c1:
         with st.container(border=True):
             st.markdown("##### 📅 Stratified Sampling by Publication Year (2021–2025)")
             st.bar_chart(stats["by_year"], color="#38BDF8")
+            per_year = stats["total"] // max(len(stats["by_year"]), 1)
             st.caption(
-                "200 unique papers sampled per year across 4 arXiv Computer Science categories "
-                "(50 papers × 4 categories × 5 years = 1,000 records)."
+                f"{per_year:,} unique papers sampled per year across 4 core CS categories "
+                f"(`cs.AI`, `cs.LG`, `cs.CL`, `cs.IR`; {stats['total']:,} total records)."
             )
     with c2:
         with st.container(border=True):
-            st.markdown("##### 🏷️ Coverage Across Sampled arXiv Categories (inc. Cross-Lists)")
+            st.markdown("##### 🏷️ Coverage Across Core arXiv Categories (inc. Cross-Lists)")
             st.bar_chart(stats["by_sampled_cat"], color="#818CF8")
             st.caption(
                 "Papers frequently cross-list across multiple CS subcategories (e.g. a cs.CL paper "
@@ -1270,7 +1483,7 @@ def analytics_tab() -> None:
         lat = eval_data.get("latency", {})
         rss = eval_data.get("rss_mb", {})
 
-        st.markdown("##### 🏆 Benchmark Evaluation Summary (30 Queries · 500 Pooled Candidates)")
+        st.markdown("##### 🏆 HCMUT-AILib 30-Query Benchmark (500 Pooled Candidates)")
         b1, b2, b3, b4 = st.columns(4)
         b1.metric(
             "Mean Reciprocal Rank (MRR)",
@@ -1293,6 +1506,33 @@ def analytics_tab() -> None:
             f"p95: {lat.get('p95_s', 0) * 1000:.1f} ms · Max: {lat.get('max_s', 0) * 1000:.1f} ms",
         )
 
+    if scifact_data:
+        st.markdown(
+            f"##### 🧪 Standard BEIR-SciFact Benchmark ({scifact_data.get('n_documents', 5183):,} Docs · "
+            f"{scifact_data.get('n_queries', 300)} Queries)"
+        )
+        m_ailib = scifact_data.get("metrics_ailib", {})
+        m_beir = scifact_data.get("metrics_beir", {})
+        scifact_rows = []
+        for key, label in [
+            ("bm25", "Okapi BM25 (Lexical Baseline)"),
+            ("semantic", f"Dense Semantic ({indexer.MODEL_NAME})"),
+            ("hybrid", "Hybrid RRF (Dense + BM25)"),
+        ]:
+            a_row = m_ailib.get(key, {})
+            b_row = m_beir.get(key, {})
+            scifact_rows.append({
+                "Retrieval System": label,
+                "MRR": round(a_row.get("mrr", 0.0), 4),
+                "NDCG@10": round(b_row.get("ndcg", {}).get("NDCG@10", 0.0), 4),
+                "MAP@10": round(b_row.get("map", {}).get("MAP@10", 0.0), 4),
+                "Recall@10": round(b_row.get("recall", {}).get("Recall@10", 0.0), 4),
+                "Recall@100": round(b_row.get("recall", {}).get("Recall@100", 0.0), 4),
+                "P@5": round(a_row.get("p@5", 0.0), 4),
+            })
+        st.dataframe(scifact_rows, width="stretch", hide_index=True)
+
+    if eval_data:
         per_query = eval_data.get("per_query", [])
         if per_query:
             with st.container(border=True):
@@ -1342,7 +1582,7 @@ def analytics_tab() -> None:
             with st.container(border=True):
                 st.markdown("##### ⚙️ Runtime & Resource Profile")
                 st.markdown(
-                    f"- **Index build time (1,000 papers):** `{eval_data.get('index_build_s', 51.5):.1f} s` (target < 180 s)\n"
+                    f"- **Index build time:** `{eval_data.get('index_build_s', 51.5):.1f} s` (target < 180 s)\n"
                     f"- **Cold start (model + ChromaDB):** `{eval_data.get('startup_s', 15.3):.1f} s` (cached per server)\n"
                     f"- **Memory footprint (RSS):** `{rss.get('after_queries', 577.1):.0f} MB` (baseline `{rss.get('before_load', 28.5):.0f} MB`)\n"
                     f"- **Evaluated trials:** `{lat.get('n', 150)}` timed queries (30 queries × 5 rounds)\n"
@@ -1362,13 +1602,13 @@ def about_tab(engine: SearchEngine) -> None:
 **HCMUT-AILib** is a zero-cost, local-first semantic search engine for academic papers,
 built for CO2001 – Professional Skills for Engineers (HCMUT).
 
-* **Collection:** {len(engine):,} open-access arXiv papers ({", ".join(CATEGORY_NAMES)}).
+* **Collection:** {len(engine):,} open-access arXiv papers ({", ".join(CORE_CATEGORIES)}).
 * **Model:** `{indexer.MODEL_NAME}` (384-dimensional sentence embeddings, CPU only).
 * **Index:** ChromaDB, cosine distance, stored locally in `data/processed/vector_index/`.
 * **Score:** "Match" is (1 + cosine similarity) / 2. It ranks papers; it is not a
   measure of quality or truth — always read the paper before citing it.
 * **Privacy:** queries never leave your computer and are not logged.
-* **Limitations:** the model is English-only; the collection is a 1,000-paper sample,
+* **Limitations:** the model is English-only; the collection is a stratified arXiv sample,
   so missing results do not mean the literature does not exist.
 """)
 
@@ -1433,14 +1673,14 @@ def main() -> None:
         years = st.slider("Publication year", lo, hi, (lo, hi), key="filter_years")
         categories = st.multiselect(
             "arXiv categories",
-            list(CATEGORY_NAMES),
+            list(CORE_CATEGORIES),
             key="filter_categories",
             format_func=lambda c: f"{c} — {CATEGORY_NAMES[c]}",
         )
         author = st.text_input(
             "Author contains",
             key="filter_author",
-            placeholder="e.g. Nguyen",
+            placeholder="e.g. Nguyen / Nguyễn",
         )
 
         st.html('<div class="sidebar-section-title">2 · Engine &amp; Display Settings</div>')
@@ -1449,6 +1689,12 @@ def main() -> None:
             RETRIEVAL_MODES,
             key="retrieval_mode",
             help="Compare Dense Semantic embeddings against Hybrid RRF or Okapi BM25 lexical search.",
+        )
+        use_rerank = st.toggle(
+            "⚡ Cross-Encoder neural re-rank",
+            value=False,
+            key="use_rerank",
+            help="Re-rank top candidates jointly with cross-encoder/ms-marco-MiniLM-L-2-v2.",
         )
         min_score_pct = st.slider(
             "Minimum match score (%)",
@@ -1471,6 +1717,7 @@ def main() -> None:
             min_score_pct=min_score_pct,
             only_doi=only_doi,
             retrieval_mode=retrieval_mode,
+            use_rerank=use_rerank,
         )
         has_custom_state = bool(
             active_filter_tags
@@ -1524,6 +1771,7 @@ def main() -> None:
             filters=filters,
             active_filter_tags=active_filter_tags,
             retrieval_mode=retrieval_mode,
+            use_rerank=use_rerank,
             min_score_pct=min_score_pct,
             sort_by=sort_by,
             view_mode=view_mode,
