@@ -12,21 +12,21 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 LAYERS = [
     ("1  Ingestion Layer", "#e8f0fe", "#2a6fdb", {
         0: ("arXiv API\n(Atom feed, CC0 metadata)", "external"),
-        1: ("src/ingest.py\nrate limit 1 request / 3 s\nclean + normalize", "module"),
-        2: ("data/raw/\narxiv_sample_1000.json", "store"),
+        1: ("src/ingest.py\nrate limit 1 req / 3 s\nstratified sampling", "module"),
+        2: ("data/raw/\narxiv_sample_10000.json\n(10,000 papers, 17 domains)", "store"),
     }),
     ("2  Storage / Vector Index Layer", "#fdf0e6", "#e07b39", {
-        0: ("ChromaDB (persistent)\ndata/processed/vector_index\nHNSW index, cosine", "store"),
-        1: ("all-MiniLM-L6-v2\n384-d sentence embeddings\n(CPU)", "model"),
-        2: ("src/indexer.py\nembed \"title. abstract\"\nin batches", "module"),
+        0: ("ChromaDB (persistent)\ndata/processed/vector_index\nHNSW index (cosine)", "store"),
+        1: ("MongoDB/mdbr-leaf-ir\n384-d dense embeddings\n(CPU, normalized)", "model"),
+        2: ("src/indexer.py\nprecomputed .npz cache\nbatch embed (size=128)", "module"),
     }),
     ("3  Core Retrieval Engine", "#e9f6ee", "#3a9d5d", {
-        0: ("src/search_engine.py\nANN top-k by cosine\nscore = (1 + cos) / 2", "module"),
-        1: ("Metadata filters\nyear · category · author", "module"),
-        2: ("Assistant helpers\ncitations (BibTeX/APA/IEEE)\nkeywords · find similar", "module"),
+        0: ("src/search_engine.py\nDense Semantic + BM25\nHybrid RRF (k=60)", "module"),
+        1: ("Author Inverted Index\n& Metadata Filters\nyear · category · diacritics", "module"),
+        2: ("Assistant helpers\ncitations (BibTeX/APA/IEEE)\nkeywords · similar papers", "module"),
     }),
     ("4  Presentation Layer", "#f6eaf4", "#b8459b", {
-        0: ("src/app.py (Streamlit)\nst.cache_resource keeps\nmodel + DB in memory", "module"),
+        0: ("src/app.py (Streamlit)\nmulti-tab research UI\nst.cache_resource", "module"),
         1: ("Researcher\n(web browser, localhost)", "external"),
     }),
 ]
@@ -41,7 +41,7 @@ ax.set_xlim(0, 12)
 ax.set_ylim(-0.2, 10)
 ax.axis("off")
 ax.text(6, 9.65, "HCMUT-AILib — Engineering Block Diagram", ha="center", fontsize=16, weight="bold")
-ax.text(6, 9.28, "Local-first, zero-cost semantic retrieval · 4-core CPU, 8 GB RAM, no GPU",
+ax.text(6, 9.28, "Local-first, zero-cost hybrid semantic retrieval · 4-core CPU, 8 GB RAM, no GPU",
         ha="center", fontsize=10, color="#555")
 
 boxes = []  # boxes[layer][column] -> (x, y)
@@ -78,7 +78,7 @@ def arrow(p, q, label=None, dashed=False, label_dx=0.08, label_dy=0.1, ha="left"
 arrow(anchor(0, 0, "right"), anchor(0, 1, "left"), "HTTPS", label_dx=-0.2)
 arrow(anchor(0, 1, "right"), anchor(0, 2, "left"), "JSON", label_dx=-0.17)
 # Layer 1 -> 2 -> index build (right to left)
-arrow(anchor(0, 2, "bottom"), anchor(1, 2, "top"), "1,000 records", label_dy=0)
+arrow(anchor(0, 2, "bottom"), anchor(1, 2, "top"), "10,000 records", label_dy=0)
 arrow(anchor(1, 2, "left"), anchor(1, 1, "right"), "encode", label_dx=-0.22)
 arrow(anchor(1, 1, "left"), anchor(1, 0, "right"), "vectors", label_dx=-0.24)
 # Query path

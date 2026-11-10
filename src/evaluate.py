@@ -122,7 +122,8 @@ def plot_embeddings(engine: SearchEngine, path: Path) -> None:
         mask = np.array([label == group for label in labels])
         ax.scatter(coords[mask, 0], coords[mask, 1], s=9, alpha=0.65, c=colour,
                    label=f"{group} ({mask.sum()})", edgecolors="none")
-    ax.set_title(f"PCA of 1,000 paper embeddings (2 components, {explained:.1%} variance)")
+    n_papers = len(data["ids"])
+    ax.set_title(f"PCA of {n_papers:,} paper embeddings (2 components, {explained:.1%} variance)")
     ax.set_xlabel("PC 1")
     ax.set_ylabel("PC 2")
     ax.legend(title="primary category", fontsize=8, markerscale=2)
@@ -237,12 +238,10 @@ def evaluate_scifact(top_k: int = 100, model_name: str = indexer.MODEL_NAME, dim
     semantic_runs = {}
     lexical_runs = {}
     hybrid_runs = {}
-    rerank_runs = {}
 
     beir_semantic = {}
     beir_lexical = {}
     beir_hybrid = {}
-    beir_rerank = {}
 
     t0 = time.perf_counter()
     for idx, (qid, qtext) in enumerate(queries.items(), 1):
@@ -260,21 +259,16 @@ def evaluate_scifact(top_k: int = 100, model_name: str = indexer.MODEL_NAME, dim
         hybrid_runs[qid] = [r.paper.id for r in h_res]
         beir_hybrid[qid] = {r.paper.id: r.score for r in h_res}
 
-        hr_res = engine.hybrid_search(qtext, top_k=top_k, rerank=True)
-        rerank_runs[qid] = [r.paper.id for r in hr_res]
-        beir_rerank[qid] = {r.paper.id: r.score for r in hr_res}
-
     total_query_time = time.perf_counter() - t0
     qrels_sets = {qid: set(docs.keys()) for qid, docs in qrels.items()}
 
     s_metrics = evaluate_run(semantic_runs, qrels_sets)
     b_metrics = evaluate_run(lexical_runs, qrels_sets)
     h_metrics = evaluate_run(hybrid_runs, qrels_sets)
-    r_metrics = evaluate_run(rerank_runs, qrels_sets)
 
     k_vals = [1, 3, 5, 10, 100]
     beir_eval_results = {}
-    for name, run_dict in [("bm25", beir_lexical), ("semantic", beir_semantic), ("hybrid", beir_hybrid), ("rerank", beir_rerank)]:
+    for name, run_dict in [("bm25", beir_lexical), ("semantic", beir_semantic), ("hybrid", beir_hybrid)]:
         ndcg, _map, recall, precision = EvaluateRetrieval.evaluate(qrels, run_dict, k_vals)
         beir_eval_results[name] = {"ndcg": ndcg, "map": _map, "recall": recall, "precision": precision}
 
@@ -288,7 +282,6 @@ def evaluate_scifact(top_k: int = 100, model_name: str = indexer.MODEL_NAME, dim
             "bm25": b_metrics,
             "semantic": s_metrics,
             "hybrid": h_metrics,
-            "rerank": r_metrics,
         },
         "metrics_beir": beir_eval_results,
     }
@@ -307,14 +300,12 @@ def evaluate_scifact(top_k: int = 100, model_name: str = indexer.MODEL_NAME, dim
     print(f"BM25 Baseline:       MRR={b_metrics['mrr']:.4f}  P@5={b_metrics['p@5']:.4f}  R@10={b_metrics['recall@10']:.4f}", flush=True)
     print(f"Semantic (Dense):    MRR={s_metrics['mrr']:.4f}  P@5={s_metrics['p@5']:.4f}  R@10={s_metrics['recall@10']:.4f}", flush=True)
     print(f"Hybrid (Dense+BM25): MRR={h_metrics['mrr']:.4f}  P@5={h_metrics['p@5']:.4f}  R@10={h_metrics['recall@10']:.4f}", flush=True)
-    print(f"Hybrid + Cross-Enc:  MRR={r_metrics['mrr']:.4f}  P@5={r_metrics['p@5']:.4f}  R@10={r_metrics['recall@10']:.4f}", flush=True)
 
     print("\n--- BEIR Standard Metrics (nDCG@10, MAP@10, Recall@10) ---", flush=True)
     for label, key in [
         ("BM25 Baseline", "bm25"),
         ("Semantic (Dense)", "semantic"),
         ("Hybrid (Dense+BM25)", "hybrid"),
-        ("Hybrid + Cross-Enc", "rerank"),
     ]:
         b = beir_eval_results[key]
         print(f"[{label:20}] nDCG@10={b['ndcg']['NDCG@10']:.4f}  MAP@10={b['map']['MAP@10']:.4f}  Recall@10={b['recall']['Recall@10']:.4f}  P@5={b['precision']['P@5']:.4f}", flush=True)

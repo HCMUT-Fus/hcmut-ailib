@@ -1,25 +1,29 @@
-"""HCMUT-AILib Streamlit dashboard. Run with ``streamlit run src/app.py``."""
+"""Streamlit web application for HCMUT-AILib.
+
+Provides an interactive research workbench for searching, exploring, and citing
+open-access computer science papers from arXiv using dense semantic vector
+retrieval and hybrid Reciprocal Rank Fusion (RRF).
+"""
 
 from __future__ import annotations
 
 import csv
 import io
 import json
+from pathlib import Path
 import sys
 import time
-from collections import Counter
-from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-from src import indexer, ingest  # noqa: E402
-from src.citations import FORMATS, bibtex_key  # noqa: E402
-from src.keywords import KeywordExtractor  # noqa: E402
-from src.search_engine import Paper, SearchEngine, SearchResult  # noqa: E402
+from src import indexer, ingest
+from src.citations import FORMATS, bibtex_key
+from src.keywords import KeywordExtractor
+from src.search_engine import Paper, SearchEngine, SearchResult
 
 CATEGORY_NAMES = {
     "cs.AI": "Artificial Intelligence",
@@ -31,15 +35,28 @@ CATEGORY_NAMES = {
     "cs.HC": "Human-Computer Interaction",
     "cs.CR": "Cryptography and Security",
     "cs.CY": "Computers and Society",
-    "cs.SD": "Sound",
-    "cs.SI": "Social and Information Networks",
-    "cs.SE": "Software Engineering",
-    "cs.NE": "Neural and Evolutionary Computing",
     "cs.DB": "Databases",
+    "cs.NE": "Neural and Evolutionary Computing",
+    "cs.SD": "Sound",
+    "cs.SE": "Software Engineering",
+    "cs.SI": "Social and Information Networks",
     "stat.ML": "Machine Learning (Stats)",
     "eess.AS": "Audio and Speech Processing",
     "eess.IV": "Image and Video Processing",
 }
+
+CATEGORY_BADGE_COLORS = {
+    "cs.AI": "violet",
+    "cs.LG": "blue",
+    "cs.CL": "green",
+    "cs.IR": "orange",
+    "cs.CV": "red",
+    "cs.RO": "violet",
+    "cs.HC": "green",
+    "cs.CR": "red",
+    "stat.ML": "blue",
+}
+
 CORE_CATEGORIES = ("cs.AI", "cs.LG", "cs.CL", "cs.IR")
 
 EXAMPLE_QUERIES = [
@@ -51,9 +68,10 @@ EXAMPLE_QUERIES = [
     "mixing two languages within one conversation",
     "blurring sensitive objects in real-time video broadcasts",
 ]
+
 RETRIEVAL_MODES = (
-    "Dense Semantic (mdbr-leaf-ir)",
-    "Hybrid RRF (Semantic + BM25)",
+    f"Dense Semantic ({indexer.MODEL_NAME})",
+    "Hybrid RRF (Dense + BM25)",
     "Lexical Baseline (Okapi BM25)",
 )
 SORT_OPTIONS = ("Relevance", "Newest first", "Oldest first", "Title (A–Z)")
@@ -61,11 +79,12 @@ VIEW_MODES = ("Detailed Cards", "Cards + Comparison Matrix", "Compact Cards")
 ABSTRACT_PREVIEW = 320
 
 EVAL_JSON_PATH = REPO_ROOT / "reports" / "results" / "evaluation.json"
-SCIFACT_JSON_PATH = REPO_ROOT / "reports" / "results" / "scifact_evaluation.json"
+SCIFACT_JSON_PATH = REPO_ROOT / "reports" / "results" / "scifact_evaluation_leaf384.json"
+SCIFACT_FALLBACK_PATH = REPO_ROOT / "reports" / "results" / "scifact_evaluation.json"
 PCA_FIG_PATH = REPO_ROOT / "reports" / "figures" / "embedding_pca.png"
 ARCH_FIG_PATH = REPO_ROOT / "docs" / "architecture.png"
 
-st.set_page_config(page_title="HCMUT-AILib", page_icon="📚", layout="wide")
+st.set_page_config(page_title="HCMUT-AILib", layout="wide")
 
 
 def inject_styles() -> None:
@@ -100,6 +119,38 @@ def inject_styles() -> None:
             50%  { opacity: 1; transform: translateX(3px); }
             100% { opacity: 0.35; transform: translateX(-3px); }
         }
+        @keyframes loaderPulseGlow {
+            0%, 100% {
+                box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.7),
+                            0 0 30px rgba(56, 189, 248, 0.25),
+                            0 0 60px rgba(168, 85, 247, 0.15);
+                border-color: rgba(56, 189, 248, 0.45);
+            }
+            50% {
+                box-shadow: 0 25px 65px -10px rgba(0, 0, 0, 0.8),
+                            0 0 45px rgba(56, 189, 248, 0.45),
+                            0 0 80px rgba(168, 85, 247, 0.35);
+                border-color: rgba(168, 85, 247, 0.65);
+            }
+        }
+        @keyframes spinRotate {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes radarRipple {
+            0% {
+                transform: scale(0.94);
+                opacity: 0.88;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.45;
+            }
+            100% {
+                transform: scale(0.94);
+                opacity: 0.88;
+            }
+        }
 
         /* Root & Animated Multi-Color Aurora Background */
         .stApp {
@@ -118,7 +169,7 @@ def inject_styles() -> None:
             border-bottom: 1px solid rgba(139, 92, 246, 0.22);
         }
         .block-container {
-            padding-top: 3.75rem !important;
+            padding-top: 3.8rem !important;
             padding-bottom: 3.5rem !important;
             max-width: 1280px !important;
         }
@@ -128,7 +179,139 @@ def inject_styles() -> None:
             box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
         }
 
-        /* Crisp h1 title that preserves full-color emoji rendering */
+        /* Centered Loading Embeddings Splash Screen for Initial Cache Load */
+        .stCacheSpinner {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 14vh auto 0 auto !important;
+            padding: 3rem 2.8rem 2.6rem 2.8rem !important;
+            max-width: 580px !important;
+            width: 90% !important;
+            border-radius: 22px !important;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.2) 0%, transparent 65%),
+                radial-gradient(circle at 50% 100%, rgba(168, 85, 247, 0.15) 0%, transparent 60%),
+                linear-gradient(145deg, rgba(15, 23, 42, 0.96) 0%, rgba(20, 24, 45, 0.98) 100%) !important;
+            border: 1px solid rgba(56, 189, 248, 0.42) !important;
+            border-top: 3px solid #38bdf8 !important;
+            box-shadow:
+                0 20px 60px -10px rgba(0, 0, 0, 0.75),
+                0 0 40px rgba(56, 189, 248, 0.25),
+                0 0 80px rgba(139, 92, 246, 0.18) !important;
+            backdrop-filter: blur(20px) !important;
+            animation: loaderPulseGlow 3s ease-in-out infinite, cardEntrance 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) !important;
+            text-align: center !important;
+            position: relative !important;
+        }
+
+        .stCacheSpinner::before {
+            content: "HCMUT-AILIB · NEURAL SYSTEM BOOT";
+            display: inline-block !important;
+            font-size: 0.68rem !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.14em !important;
+            text-transform: uppercase !important;
+            color: #7dd3fc !important;
+            background: rgba(12, 74, 110, 0.55) !important;
+            border: 1px solid rgba(56, 189, 248, 0.45) !important;
+            padding: 0.28rem 0.85rem !important;
+            border-radius: 999px !important;
+            margin-bottom: 0.9rem !important;
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.3) !important;
+        }
+
+        .stCacheSpinner::after {
+            content: "Loading 384-D sentence embeddings · Warming up ChromaDB HNSW · Local CPU execution";
+            display: block !important;
+            font-size: 0.74rem !important;
+            font-weight: 500 !important;
+            letter-spacing: 0.04em !important;
+            color: #94a3b8 !important;
+            margin-top: 0.9rem !important;
+            padding-top: 0.85rem !important;
+            border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+            width: 100% !important;
+            text-align: center !important;
+        }
+
+        .stCacheSpinner > div {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 1.15rem !important;
+            width: 100% !important;
+        }
+
+        .stCacheSpinner svg {
+            width: 52px !important;
+            height: 52px !important;
+            color: #38bdf8 !important;
+            filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.85))
+                    drop-shadow(0 0 28px rgba(168, 85, 247, 0.65)) !important;
+            animation: spinRotate 1.25s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite, radarRipple 2.5s ease-in-out infinite !important;
+        }
+
+        .stCacheSpinner [role="status"] {
+            text-align: center !important;
+        }
+
+        .stCacheSpinner [role="status"] p,
+        .stCacheSpinner [role="status"] span {
+            font-size: 1.15rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.01em !important;
+            color: #f8fafc !important;
+            background: linear-gradient(90deg, #38bdf8, #c084fc, #ec4899, #38bdf8) !important;
+            background-size: 200% 100% !important;
+            animation: rainbowFlow 4s linear infinite !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            margin: 0 !important;
+            text-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important;
+        }
+
+        /* Centered Query Searching Spinner */
+        div[data-testid="stSpinner"]:not(.stCacheSpinner) {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 1.8rem auto !important;
+            padding: 0.9rem 1.8rem !important;
+            max-width: 440px !important;
+            border-radius: 999px !important;
+            background: rgba(15, 23, 42, 0.92) !important;
+            border: 1px solid rgba(56, 189, 248, 0.35) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 18px rgba(56, 189, 248, 0.22) !important;
+            backdrop-filter: blur(12px) !important;
+            animation: cardEntrance 0.3s ease-out !important;
+        }
+
+        div[data-testid="stSpinner"]:not(.stCacheSpinner) > div {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.75rem !important;
+        }
+
+        div[data-testid="stSpinner"]:not(.stCacheSpinner) svg {
+            width: 24px !important;
+            height: 24px !important;
+            color: #38bdf8 !important;
+            filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7)) !important;
+            animation: spinRotate 1s linear infinite !important;
+        }
+
+        div[data-testid="stSpinner"]:not(.stCacheSpinner) [role="status"] p {
+            font-size: 0.92rem !important;
+            font-weight: 600 !important;
+            color: #e2e8f0 !important;
+            margin: 0 !important;
+        }
+
+        /* Crisp h1 title */
         h1 {
             font-size: 2.15rem !important;
             font-weight: 800 !important;
@@ -384,6 +567,31 @@ def inject_styles() -> None:
                 0 6px 18px -4px rgba(168, 85, 247, 0.18);
         }
 
+        /* Confidence tier chips */
+        .tier-chip {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.15rem 0.55rem;
+            border-radius: 999px;
+            letter-spacing: 0.03em;
+        }
+        .tier-high {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .tier-med {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+        }
+        .tier-low {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+
         /* Animated Multi-Color Progress Bars for Match Scores */
         div[data-testid="stProgress"] > div > div > div > div {
             background: linear-gradient(
@@ -476,7 +684,7 @@ def inject_styles() -> None:
     """)
 
 
-@st.cache_resource(show_spinner="Loading embedding model and vector index…")
+@st.cache_resource(show_spinner="Loading 384-D neural embeddings and vector index…")
 def get_engine() -> SearchEngine:
     return SearchEngine()
 
@@ -518,9 +726,10 @@ def load_evaluation_data() -> dict | None:
 
 @st.cache_data
 def load_scifact_data() -> dict | None:
-    if SCIFACT_JSON_PATH.exists():
+    path = SCIFACT_JSON_PATH if SCIFACT_JSON_PATH.exists() else SCIFACT_FALLBACK_PATH
+    if path.exists():
         try:
-            return json.loads(SCIFACT_JSON_PATH.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             return None
     return None
@@ -528,24 +737,30 @@ def load_scifact_data() -> dict | None:
 
 @st.cache_data
 def corpus_statistics() -> dict:
-    records = load_raw_corpus()
-    by_year = Counter(int(r["published_date"][:4]) for r in records)
-    by_primary = Counter(r["primary_category"] for r in records)
-    by_sampled_cat = Counter(
-        cat for r in records for cat in r["categories"] if cat in CORE_CATEGORIES
-    )
-    doi_count = sum(1 for r in records if r.get("doi"))
-    word_counts = [len(r["abstract"].split()) for r in records]
-    author_counts = [len(r["authors"]) for r in records]
+    papers = load_raw_corpus()
+    total = len(papers)
+    by_cat: dict[str, int] = {}
+    by_year: dict[int, int] = {}
+    word_counts: list[int] = []
+    doi_count = 0
+    for p in papers:
+        for c in p["categories"]:
+            by_cat[c] = by_cat.get(c, 0) + 1
+        y = int(p["published_date"][:4])
+        by_year[y] = by_year.get(y, 0) + 1
+        word_counts.append(len(p["abstract"].split()))
+        if p.get("doi"):
+            doi_count += 1
+    sampled_cats = {c: by_cat.get(c, 0) for c in CATEGORY_NAMES if c in by_cat}
     return {
-        "total": len(records),
+        "total": total,
+        "by_category": dict(sorted(by_cat.items(), key=lambda kv: -kv[1])),
+        "by_sampled_cat": sampled_cats,
         "by_year": dict(sorted(by_year.items())),
-        "by_primary": dict(by_primary.most_common(10)),
-        "by_sampled_cat": {c: by_sampled_cat[c] for c in CORE_CATEGORIES},
-        "doi_count": doi_count,
-        "doi_pct": (doi_count / len(records) * 100.0) if records else 0.0,
-        "avg_words": sum(word_counts) / len(word_counts) if word_counts else 0.0,
-        "avg_authors": sum(author_counts) / len(author_counts) if author_counts else 0.0,
+        "avg_words": sum(word_counts) / max(total, 1),
+        "min_words": min(word_counts) if word_counts else 0,
+        "max_words": max(word_counts) if word_counts else 0,
+        "doi_pct": (doi_count / max(total, 1)) * 100,
     }
 
 
@@ -605,11 +820,6 @@ def _on_query_change() -> None:
         st.session_state.example = None
 
 
-def _set_query(q: str) -> None:
-    st.session_state.query = q
-    st.session_state.example = q if q in EXAMPLE_QUERIES else None
-
-
 def _clear_query() -> None:
     st.session_state.query = ""
     st.session_state.example = None
@@ -621,7 +831,6 @@ def _reset_filters(lo: int, hi: int) -> None:
     st.session_state.filter_categories = []
     st.session_state.filter_author = ""
     st.session_state.retrieval_mode = RETRIEVAL_MODES[0]
-    st.session_state.use_rerank = False
     st.session_state.min_score_pct = 0
     st.session_state.sort_by = SORT_OPTIONS[0]
     st.session_state.view_mode = VIEW_MODES[0]
@@ -639,19 +848,6 @@ def record_query_history(query: str) -> None:
     st.session_state.query_history = hist[:8]
 
 
-CATEGORY_BADGE_COLORS = {
-    "cs.AI": "violet",
-    "cs.LG": "blue",
-    "cs.CL": "green",
-    "cs.IR": "orange",
-    "cs.CV": "red",
-    "cs.RO": "violet",
-    "cs.HC": "green",
-    "cs.CR": "red",
-    "stat.ML": "blue",
-}
-
-
 def format_category_badges(paper: Paper) -> str:
     badges = []
     for idx, cat in enumerate(paper.categories):
@@ -664,12 +860,12 @@ def format_category_badges(paper: Paper) -> str:
     return " ".join(badges)
 
 
-def confidence_badge(score: float) -> str:
+def confidence_tier_html(score: float) -> str:
     if score >= 0.78:
-        return ":green-badge[High Match]"
+        return '<span class="tier-chip tier-high">● High Match</span>'
     if score >= 0.68:
-        return ":blue-badge[Moderate Match]"
-    return ":orange-badge[Exploratory]"
+        return '<span class="tier-chip tier-med">● Moderate Match</span>'
+    return '<span class="tier-chip tier-low">● Exploratory</span>'
 
 
 def format_active_filters(
@@ -680,13 +876,10 @@ def format_active_filters(
     min_score_pct: int = 0,
     only_doi: bool = False,
     retrieval_mode: str = RETRIEVAL_MODES[0],
-    use_rerank: bool = False,
 ) -> list[str]:
     summary: list[str] = []
     if retrieval_mode != RETRIEVAL_MODES[0]:
         summary.append(f"Mode: {retrieval_mode.split(' (')[0]}")
-    if use_rerank:
-        summary.append("Cross-Encoder Rerank")
     if years != bounds:
         summary.append(
             f"Year: {years[0]}" if years[0] == years[1] else f"Years: {years[0]}–{years[1]}"
@@ -729,7 +922,6 @@ def execute_retrieval(
     year_range: tuple[int, int] | None,
     categories: list[str] | None,
     author: str | None,
-    rerank: bool = False,
 ) -> list[SearchResult]:
     """Run semantic, hybrid RRF, or Okapi BM25 retrieval via SearchEngine."""
     if retrieval_mode.startswith("Dense Semantic"):
@@ -739,7 +931,7 @@ def execute_retrieval(
             year_range=year_range,
             categories=categories,
             author=author,
-            rerank=rerank,
+            rerank=False,
         )
 
     if retrieval_mode.startswith("Hybrid RRF"):
@@ -749,7 +941,7 @@ def execute_retrieval(
             year_range=year_range,
             categories=categories,
             author=author,
-            rerank=rerank,
+            rerank=False,
         )
 
     # Lexical Baseline (Okapi BM25)
@@ -757,7 +949,6 @@ def execute_retrieval(
     raw_scores = bm25.scores(query)
     max_bm25 = max(raw_scores) if raw_scores else 0.0
     ranked = sorted(zip(raw_scores, bm25.ids), key=lambda x: -x[0])
-    fetch_k = max(top_k * 2, 15) if rerank else top_k
     results: list[SearchResult] = []
     for sc, pid in ranked:
         if sc <= 0:
@@ -767,72 +958,79 @@ def execute_retrieval(
             continue
         norm_sc = min(0.99, max(0.05, sc / max_bm25)) if max_bm25 > 0 else 0.0
         results.append(SearchResult(paper=paper, score=norm_sc, rank=len(results) + 1))
-        if len(results) == fetch_k:
+        if len(results) == top_k:
             break
-    if rerank and results:
-        return engine.rerank(query, results, top_k=top_k)
     return results[:top_k]
 
 
 def results_to_csv(results: list[SearchResult]) -> str:
     buf = io.StringIO()
     writer = csv.writer(buf)
-    writer.writerow(
-        ["Rank", "arXiv ID", "Title", "Year", "Published Date", "Primary Category",
-         "Categories", "Match Score", "Authors", "DOI", "PDF URL", "arXiv URL"]
-    )
+    writer.writerow([
+        "Rank", "Match Score", "arXiv ID", "Title", "Authors",
+        "Published Date", "Categories", "DOI", "PDF URL", "Abstract",
+    ])
     for r in results:
         p = r.paper
         writer.writerow([
             r.rank,
+            f"{r.score:.4f}",
             p.id,
             p.title,
-            p.year,
-            p.published_date,
-            p.primary_category,
-            " ".join(p.categories),
-            f"{r.score:.4f}",
             "; ".join(p.authors),
-            p.doi or "",
+            p.published_date,
+            "; ".join(p.categories),
+            p.doi,
             p.pdf_url,
-            p.abs_url,
+            p.abstract,
         ])
     return buf.getvalue()
 
 
 def render_professional_header(engine: SearchEngine) -> None:
-    """Render a unified, vibrant, animated dark-mode institutional header card."""
+    """Render a unified, vibrant, animated dark-mode institutional header card with live telemetry."""
     stats = corpus_statistics()
     saved_count = len(st.session_state.get("saved_papers", []))
     mode = st.session_state.get("retrieval_mode", RETRIEVAL_MODES[0])
-    rerank_on = bool(st.session_state.get("use_rerank", False))
+    scifact = load_scifact_data()
+
+    if scifact:
+        h_ndcg = scifact.get("metrics_beir", {}).get("hybrid", {}).get("ndcg", {}).get("NDCG@10", 0.6714)
+        b_ndcg = scifact.get("metrics_beir", {}).get("bm25", {}).get("ndcg", {}).get("NDCG@10", 0.6408)
+        pct_gain = (h_ndcg - b_ndcg) / b_ndcg * 100
+        bench_label = "BEIR SciFact nDCG@10"
+        bench_val = f"{h_ndcg:.3f}"
+        bench_sub = f"Hybrid RRF · +{pct_gain:.1f}% vs BM25 ({b_ndcg:.3f})"
+    else:
+        bench_label = "Benchmark MRR"
+        bench_val = "0.883"
+        bench_sub = "+15.3% vs MiniLM-L6"
 
     is_dense = mode.startswith("Dense") or mode.startswith("Hybrid")
-    is_hybrid = mode.startswith("Hybrid") or mode.startswith("Lexical")
+    is_hybrid = mode.startswith("Hybrid")
     s1_cls = "ailib-stage ailib-stage-active-cyan" if is_dense else "ailib-stage"
     s2_cls = "ailib-stage ailib-stage-active-violet" if is_hybrid else "ailib-stage ailib-stage-active-cyan"
-    s3_cls = "ailib-stage ailib-stage-active-pink" if rerank_on else "ailib-stage"
-    s4_cls = "ailib-stage ailib-stage-active-emerald"
+    s3_cls = "ailib-stage ailib-stage-active-emerald"
 
     with st.container(border=True):
         st.html(f"""
         <div class="ailib-rainbow-bar"></div>
         <div class="ailib-topbar">
             <span class="ailib-inst-tag">
-                🏛️ HCMUT · Faculty of Computer Science &amp; Engineering · CO2001
+                HCMUT · Faculty of Computer Science &amp; Engineering · CO2001
             </span>
             <div class="ailib-status-strip">
                 <span class="ailib-pill ailib-pill-online">
                     <span class="ailib-dot"></span> Engine Online
                 </span>
                 <span class="ailib-pill ailib-pill-cyan">
-                    🧠 {indexer.MODEL_NAME} · 384-D
+                    Model: {indexer.MODEL_NAME} · 384-D
                 </span>
                 <span class="ailib-pill ailib-pill-violet">
-                    ⚡ ChromaDB HNSW · Cosine
+                    ChromaDB HNSW · Cosine
                 </span>
                 <span class="ailib-pill ailib-pill-amber">
-                    🔒 Air-Gapped Local
+                    Air-Gapped Local Execution
                 </span>
             </div>
         </div>
@@ -840,10 +1038,10 @@ def render_professional_header(engine: SearchEngine) -> None:
 
         title_col, status_col = st.columns([1.32, 1.68], vertical_alignment="center")
         with title_col:
-            st.title("📚 HCMUT-AILib")
+            st.title("HCMUT-AILib")
             st.caption(
                 "Semantic search & research assistant for open-access academic papers · "
-                "Dense Vector + Hybrid RRF + Cross-Encoder Workbench"
+                "Dense Vector + Hybrid RRF Retrieval Workbench (v1.0.0)"
             )
         with status_col:
             st.html(f"""
@@ -851,12 +1049,12 @@ def render_professional_header(engine: SearchEngine) -> None:
                 <div class="ailib-stat-box ailib-stat-cyan">
                     <div class="ailib-stat-label">Indexed Corpus</div>
                     <div class="ailib-stat-val">{len(engine):,} Papers</div>
-                    <div class="ailib-stat-sub-cyan">arXiv 2021–2025 · Stratified</div>
+                    <div class="ailib-stat-sub-cyan">arXiv 2021–2025 · 17 Domains</div>
                 </div>
                 <div class="ailib-stat-box ailib-stat-violet">
-                    <div class="ailib-stat-label">Benchmark MRR</div>
-                    <div class="ailib-stat-val">0.911</div>
-                    <div class="ailib-stat-sub-violet">+31.5% vs Okapi BM25</div>
+                    <div class="ailib-stat-label">{bench_label}</div>
+                    <div class="ailib-stat-val">{bench_val}</div>
+                    <div class="ailib-stat-sub-violet">{bench_sub}</div>
                 </div>
                 <div class="ailib-stat-box ailib-stat-emerald">
                     <div class="ailib-stat-label">Reading List</div>
@@ -868,13 +1066,11 @@ def render_professional_header(engine: SearchEngine) -> None:
 
         st.html(f"""
         <div class="ailib-pipeline">
-            <span class="{s1_cls}">1 · 🧬 384-D Neural Embedder</span>
+            <span class="{s1_cls}">1 · 384-D Neural Embedder ({indexer.MODEL_NAME})</span>
             <span class="ailib-arrow">━━▶</span>
-            <span class="{s2_cls}">2 · 🧭 {'Hybrid RRF (HNSW + BM25)' if is_hybrid else 'ChromaDB HNSW Cosine'}</span>
+            <span class="{s2_cls}">2 · {'Hybrid RRF (HNSW + BM25)' if is_hybrid else 'ChromaDB HNSW Cosine'}</span>
             <span class="ailib-arrow">━━▶</span>
-            <span class="{s3_cls}">3 · 🎯 Cross-Encoder Rerank {'(ON)' if rerank_on else '(Ready)'}</span>
-            <span class="ailib-arrow">━━▶</span>
-            <span class="{s4_cls}">4 · ✨ TF-IDF Key Terms &amp; Citations</span>
+            <span class="{s3_cls}">3 · TF-IDF Key Terms &amp; Citations</span>
         </div>
         """)
 
@@ -894,24 +1090,26 @@ def render_card(
             f"{result.score:.0%}",
             help="Semantic Similarity Score: Cosine similarity rescaled to 0–1; compare within this query only.",
         )
-        score.progress(result.score)
+        score.progress(min(max(result.score, 0.0), 1.0))
 
         authors = ", ".join(paper.authors[:6]) + (
             f" et al. (+{len(paper.authors) - 6} more)" if len(paper.authors) > 6 else ""
         )
         badges = format_category_badges(paper)
-        tier = confidence_badge(result.score)
         doi_badge = f" :green-badge[DOI: {paper.doi}]" if paper.doi else ""
         head.markdown(
-            f"**{authors}** · 📅 `{paper.published_date}` · `arXiv:{paper.id}`  \n"
-            f"{tier} {badges}{doi_badge}"
+            f"**{authors}** · Published: `{paper.published_date}` · `arXiv:{paper.id}`  \n"
+            f"{badges}{doi_badge}"
+        )
+        score.html(
+            f"<div style='text-align:right; margin-top:2px;'>{confidence_tier_html(result.score)}</div>"
         )
 
         keywords = get_keyword_extractor().extract(paper.abstract, k=5)
         if keywords:
             kw_colors = ("violet", "blue", "green", "orange", "red")
             kw_pills = " ".join(
-                f":{kw_colors[i % len(kw_colors)]}-badge[✦ {kw}]"
+                f":{kw_colors[i % len(kw_colors)]}-badge[{kw}]"
                 for i, kw in enumerate(keywords)
             )
             st.markdown(f"**Key terms:** {kw_pills}")
@@ -935,10 +1133,10 @@ def render_card(
 
         n_cols = 5 if paper.doi else 4
         links = st.columns(n_cols)
-        links[0].link_button("📄 PDF", paper.pdf_url, width="stretch")
-        links[1].link_button("🔗 arXiv page", paper.abs_url, width="stretch")
+        links[0].link_button("PDF", paper.pdf_url, width="stretch")
+        links[1].link_button("arXiv page", paper.abs_url, width="stretch")
         if paper.doi:
-            links[2].link_button("🏷️ DOI", f"https://doi.org/{paper.doi}", width="stretch")
+            links[2].link_button("DOI", f"https://doi.org/{paper.doi}", width="stretch")
             sim_col = links[3]
             save_col = links[4]
         else:
@@ -946,7 +1144,7 @@ def render_card(
             save_col = links[3]
 
         if sim_col.button(
-            "🔍 Find similar",
+            "Find similar",
             key=f"{key_prefix}-sim-{paper.id}",
             on_click=_select_similar,
             args=(paper.id,),
@@ -954,7 +1152,7 @@ def render_card(
         ):
             st.toast(f"Loaded neighbours for arXiv:{paper.id} in the “Similar papers” tab.")
 
-        save_label = "🔖 Saved" if is_saved else "🔖 Save paper"
+        save_label = "Saved" if is_saved else "Save paper"
         if save_col.button(
             save_label,
             key=f"{key_prefix}-save-{paper.id}",
@@ -976,7 +1174,7 @@ def render_card(
             )
             citation_text = FORMATS[style](paper)
             c_top_right.download_button(
-                "⬇️ Download .bib" if style == "BibTeX" else "⬇️ Download .txt",
+                "Download .bib" if style == "BibTeX" else "Download .txt",
                 data=citation_text,
                 file_name=f"{paper.id}.bib" if style == "BibTeX" else f"{paper.id}_{style.lower()}.txt",
                 mime="text/plain",
@@ -991,125 +1189,79 @@ def render_card(
 
 
 def render_onboarding() -> None:
+    """Render welcome banner and dataset statistics for empty state."""
     st.info("Type a research question above, or pick one of the examples.")
-
     stats = corpus_statistics()
+    scifact = load_scifact_data()
+    h_ndcg = "0.671"
+    ndcg_sub = "+4.8% vs BM25 (0.641)"
+    if scifact:
+        val = scifact.get("metrics_beir", {}).get("hybrid", {}).get("ndcg", {}).get("NDCG@10", 0.6714)
+        b_val = scifact.get("metrics_beir", {}).get("bm25", {}).get("ndcg", {}).get("NDCG@10", 0.6408)
+        h_ndcg = f"{val:.3f}"
+        ndcg_sub = f"+{(val - b_val)/b_val*100:.1f}% vs BM25 ({b_val:.3f})"
+
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Stratified Corpus", f"{stats['total']:,} Papers", "4 CS domains · 2021–2025")
+    k1.metric("Indexed Corpus", f"{stats['total']:,} Papers", "17 arXiv categories")
     k2.metric("Mean Abstract Length", f"{stats['avg_words']:.0f} Words", "Title + Abstract embedded")
     k3.metric("Mean Query Latency", "13.6 ms", "p95: 17.1 ms (CPU)")
-    k4.metric("Top-1 Accuracy", "83.3%", "25 / 30 benchmark queries")
+    k4.metric("BEIR SciFact nDCG@10", h_ndcg, ndcg_sub)
 
     cols = st.columns(3)
-    with cols[0]:
-        with st.container(border=True):
-            st.markdown(
-                "### 🎯 Semantic, Hybrid & Rerank\n"
-                f"Switch between **Dense Semantic** (`{indexer.MODEL_NAME}`), "
-                "**Hybrid RRF** (Reciprocal Rank Fusion), and **Okapi BM25**, plus optional "
-                "**Cross-Encoder Neural Re-ranking** in the sidebar."
-            )
-    with cols[1]:
-        with st.container(border=True):
-            st.markdown(
-                "### 🧭 Graph-Like Neighbourhoods\n"
-                "Click **🔍 Find similar** on any paper card to jump directly into its "
-                "384-dimensional embedding neighbourhood and inspect topically related papers."
-            )
-    with cols[2]:
-        with st.container(border=True):
-            st.markdown(
-                "### 🔖 Reading List & Batch Export\n"
-                "Bookmark relevant papers with **🔖 Save paper**, compare them side-by-side "
-                "in the **Reading List** tab, and export formatted **BibTeX / APA 7 / IEEE** "
-                "citations or CSV summaries."
-            )
-
-    with st.expander("💡 Why Semantic Search? Vocabulary Mismatch Showcase (Live Examples)", expanded=True):
-        showcase_rows = [
-            {
-                "Natural-Language Query": "mixing two languages within one conversation",
-                "BM25 Keyword Top Hit": "No relevant match (0 lexical overlap)",
-                "HCMUT-AILib Top Hit (Rank 1)": "A Survey of Code-switching (cs.CL)",
-            },
-            {
-                "Natural-Language Query": "how humans learn to decide when to stop deliberating and act",
-                "BM25 Keyword Top Hit": "Impact of Stop Sets on Active Learning (false match on 'stop')",
-                "HCMUT-AILib Top Hit (Rank 1)": "Have I done enough planning or should I plan more? (cs.AI)",
-            },
-            {
-                "Natural-Language Query": "jointly grouping documents and discovering their topics without supervision",
-                "BM25 Keyword Top Hit": "No relevant match in top 10",
-                "HCMUT-AILib Top Hit (Rank 1)": "ClusTop: Unsupervised Text Clustering & Topic Extraction (cs.IR)",
-            },
-        ]
-        st.dataframe(showcase_rows, width="stretch", hide_index=True)
+    with cols[0], st.container(border=True):
+        st.markdown(
+            "### Semantic & Hybrid Search\n\n"
+            f"Switch seamlessly between **Dense Semantic** (`{indexer.MODEL_NAME}`), "
+            "**Hybrid RRF** (Reciprocal Rank Fusion), and **Okapi BM25** keyword search "
+            "from the sidebar settings."
+        )
+    with cols[1], st.container(border=True):
+        st.markdown(
+            "### Graph-Like Neighbourhoods\n\n"
+            "Click **Find similar** on any paper card to jump directly to its "
+            "cosine nearest neighbours in the high-dimensional latent space."
+        )
+    with cols[2], st.container(border=True):
+        st.markdown(
+            "### Reading List & Batch Export\n\n"
+            "Bookmark relevant papers with **Save paper**, compare them side by side, "
+            "and export unified bibliographies in BibTeX, APA 7th, or IEEE."
+        )
 
 
-def render_results_analytics_bar(
-    results: list[SearchResult],
-    elapsed: float,
-    retrieval_mode: str,
-) -> None:
+def render_results_analytics_bar(results: list[SearchResult], elapsed: float = 0.0, mode: str = "") -> None:
+    if not results:
+        return
     scores = [r.score for r in results]
-    top_score = max(scores) if scores else 0.0
-    mean_score = sum(scores) / len(scores) if scores else 0.0
+    avg_score = sum(scores) / len(scores)
+    top_score = max(scores)
+    doi_count = sum(1 for r in results if r.paper.doi)
     years = [r.paper.year for r in results]
-    cat_counts = Counter(r.paper.primary_category for r in results)
-    top_cat, top_cat_n = cat_counts.most_common(1)[0] if cat_counts else ("–", 0)
+    yr_span = f"{min(years)}–{max(years)}" if min(years) != max(years) else str(min(years))
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric(
-        "Retrieved Papers",
-        f"{len(results)}",
-        retrieval_mode.split(" (")[0],
-    )
-    m2.metric(
-        "Search Latency",
-        f"{elapsed * 1000:.1f} ms",
-        "Target < 1,500 ms",
-    )
-    m3.metric(
-        "Top Match Score",
-        f"{top_score:.0%}",
-        f"Mean: {mean_score:.0%}",
-    )
-    m4.metric(
-        "Dominant Category",
-        f"{top_cat} ({top_cat_n})",
-        f"Span: {min(years)}–{max(years)}" if years else "–",
-    )
+    a1, a2, a3, a4 = st.columns(4)
+    a1.metric("Returned Papers", str(len(results)), f"Top match: {top_score * 100:.1f}%")
+    a2.metric("Mean Match Score", f"{avg_score * 100:.1f}%", f"Range: {min(scores)*100:.0f}–{top_score*100:.0f}%")
+    a3.metric("Year Span", yr_span, f"Span of {len(set(years))} unique years")
+    a4.metric("Publisher DOI", f"{doi_count}/{len(results)}", f"{(doi_count/len(results))*100:.0f}% direct lookup")
 
 
 def render_results_comparison_matrix(results: list[SearchResult]) -> None:
-    rows = [
-        {
+    if not results:
+        return
+    matrix_rows = []
+    for r in results:
+        matrix_rows.append({
             "Rank": r.rank,
-            "Match": round(r.score * 100, 1),
+            "Match": f"{r.score * 100:.1f}%",
             "arXiv ID": r.paper.id,
-            "Year": r.paper.year,
-            "Category": r.paper.primary_category,
             "Title": r.paper.title,
-            "First Author": r.paper.authors[0] if r.paper.authors else "Unknown",
+            "Year": r.paper.year,
+            "Primary Cat": r.paper.primary_category,
             "Authors": len(r.paper.authors),
-            "Has DOI": "✔" if r.paper.doi else "–",
-        }
-        for r in results
-    ]
-    st.dataframe(
-        rows,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "Match": st.column_config.ProgressColumn(
-                "Match %",
-                min_value=0,
-                max_value=100,
-                format="%.1f%%",
-            ),
-            "Title": st.column_config.TextColumn("Paper Title", width="large"),
-        },
-    )
+            "Has DOI": "Yes" if r.paper.doi else "–",
+        })
+    st.dataframe(matrix_rows, width="stretch", hide_index=True)
 
 
 def search_tab(
@@ -1117,16 +1269,12 @@ def search_tab(
     filters: dict,
     active_filter_tags: list[str],
     retrieval_mode: str,
-    use_rerank: bool,
     min_score_pct: int,
     sort_by: str,
     view_mode: str,
     only_doi: bool,
 ) -> None:
-    st.markdown(
-        "Describe what you are looking for in plain English — the engine matches "
-        "**meaning**, not exact words."
-    )
+    st.caption("Describe what you are looking for in plain English — the engine matches meaning, not exact words.")
 
     if st.session_state.query.strip():
         input_col, clear_col = st.columns([11, 1])
@@ -1138,7 +1286,7 @@ def search_tab(
             on_change=_on_query_change,
         )
         clear_col.button(
-            "✕",
+            "Clear",
             key="clear_query_btn",
             help="Clear search query",
             on_click=_clear_query,
@@ -1173,7 +1321,6 @@ def search_tab(
             engine,
             query=query,
             retrieval_mode=retrieval_mode,
-            rerank=use_rerank,
             **filters,
         )
         elapsed = time.perf_counter() - start
@@ -1205,17 +1352,17 @@ def search_tab(
 
     if view_mode == "Cards + Comparison Matrix":
         with st.container(border=True):
-            st.markdown("##### 📊 Results Comparison Matrix")
+            st.markdown("##### Results Comparison Matrix")
             render_results_comparison_matrix(results)
     else:
-        with st.expander("📊 Inspect results in tabular comparison matrix"):
+        with st.expander("Inspect results in tabular comparison matrix"):
             render_results_comparison_matrix(results)
 
     compact_cards = view_mode == "Compact Cards"
     for result in results:
         render_card(result, "search", compact=compact_cards)
 
-    with st.expander(f"📋 Batch Export & Citations for all {len(results)} displayed results"):
+    with st.expander(f"Batch Export & Citations for all {len(results)} displayed results"):
         exp_c1, exp_c2, exp_c3 = st.columns([2, 1, 1])
         batch_style = exp_c1.radio(
             "Batch citation format",
@@ -1226,7 +1373,7 @@ def search_tab(
         )
         combined_citations = "\n\n".join(FORMATS[batch_style](r.paper) for r in results)
         exp_c2.download_button(
-            f"⬇️ Download All ({batch_style})",
+            f"Download All ({batch_style})",
             data=combined_citations,
             file_name="hcmut_ailib_results.bib" if batch_style == "BibTeX" else "hcmut_ailib_citations.txt",
             mime="text/plain",
@@ -1234,7 +1381,7 @@ def search_tab(
             width="stretch",
         )
         exp_c3.download_button(
-            "⬇️ Export Results CSV",
+            "Export Results CSV",
             data=results_to_csv(results),
             file_name="hcmut_ailib_results.csv",
             mime="text/csv",
@@ -1295,13 +1442,13 @@ def similar_tab(engine: SearchEngine, top_k: int) -> None:
 
     with st.container(border=True):
         top_left, top_right = st.columns([4, 1.5])
-        top_left.caption("🎯 SEED PAPER SPOTLIGHT")
+        top_left.caption("SEED PAPER SPOTLIGHT")
         top_left.markdown(f"### {source.title}")
         seed_authors = ", ".join(source.authors[:6]) + (
             f" et al. (+{len(source.authors) - 6} more)" if len(source.authors) > 6 else ""
         )
         top_left.markdown(
-            f"**{seed_authors}** · 📅 `{source.published_date}` · `arXiv:{source.id}`  \n"
+            f"**{seed_authors}** · Published: `{source.published_date}` · `arXiv:{source.id}`  \n"
             f"{format_category_badges(source)}"
         )
         top_right.metric("Mean Neighbour Sim", f"{mean_sim:.0%}")
@@ -1313,11 +1460,11 @@ def similar_tab(engine: SearchEngine, top_k: int) -> None:
             st.write(source.abstract)
 
         seed_cols = st.columns(4 if source.doi else 3)
-        seed_cols[0].link_button("📄 Seed PDF", source.pdf_url, width="stretch")
-        seed_cols[1].link_button("🔗 Seed arXiv page", source.abs_url, width="stretch")
+        seed_cols[0].link_button("Seed PDF", source.pdf_url, width="stretch")
+        seed_cols[1].link_button("Seed arXiv page", source.abs_url, width="stretch")
         if source.doi:
             seed_cols[2].link_button(
-                "🏷️ Seed DOI", f"https://doi.org/{source.doi}", width="stretch"
+                "Seed DOI", f"https://doi.org/{source.doi}", width="stretch"
             )
             save_seed_col = seed_cols[3]
         else:
@@ -1325,7 +1472,7 @@ def similar_tab(engine: SearchEngine, top_k: int) -> None:
 
         is_seed_saved = source.id in st.session_state.get("saved_papers", [])
         save_seed_col.button(
-            "🔖 Saved" if is_seed_saved else "🔖 Save seed paper",
+            "Saved" if is_seed_saved else "Save seed paper",
             key=f"seed-save-{source.id}",
             on_click=_toggle_saved_paper,
             args=(source.id,),
@@ -1338,120 +1485,109 @@ def similar_tab(engine: SearchEngine, top_k: int) -> None:
 
 
 def reading_list_tab(engine: SearchEngine) -> None:
-    st.markdown(
-        "Curate your session reading list, compare papers side-by-side, and export a "
-        "unified bibliography for your literature review."
-    )
+    saved = st.session_state.get("saved_papers", [])
     catalog = paper_catalog()
-    add_col, btn_col, clear_col = st.columns([3, 1, 1])
-    chosen_to_add = add_col.selectbox(
-        "Quick-add a paper from the index",
-        options=list(catalog),
-        index=None,
-        key="reading_list_picker",
-        format_func=lambda pid: catalog.get(pid, pid),
-        placeholder="Search by arXiv ID or paper title to bookmark…",
+    all_ids = list(catalog.keys())
+
+    st.markdown(
+        "Manage bookmarked papers from your session, run comparative analysis across them, "
+        "and export unified bibliographies ready for LaTeX and Word."
+    )
+
+    pick_col, btn_col, clear_col = st.columns([4, 1.2, 1])
+    chosen_to_add = pick_col.selectbox(
+        "Add a paper directly to reading list",
+        all_ids,
+        format_func=lambda pid: catalog[pid],
+        key="reading_list_add_select",
         label_visibility="collapsed",
     )
-    if btn_col.button("➕ Add to Reading List", width="stretch") and chosen_to_add:
+    if btn_col.button("Add to Reading List", width="stretch") and chosen_to_add:
         if chosen_to_add not in st.session_state.saved_papers:
             st.session_state.saved_papers.append(chosen_to_add)
-            st.toast(f"Added arXiv:{chosen_to_add} to Reading List.")
+            st.session_state.saved_papers.sort()
+            st.rerun()
 
-    saved_ids: list[str] = list(st.session_state.get("saved_papers", []))
     clear_col.button(
-        "🗑️ Clear All",
+        "Clear All",
         on_click=_clear_saved_papers,
-        disabled=not saved_ids,
+        disabled=not saved,
         width="stretch",
     )
 
-    if not saved_ids:
+    if not saved:
         st.info(
-            "Your Reading List is currently empty. Click **🔖 Save paper** on any search "
+            "Your Reading List is currently empty. Click **Save paper** on any search "
             "result card, or pick a paper from the dropdown above."
         )
         return
 
-    papers: list[Paper] = []
-    for pid in saved_ids:
-        try:
-            papers.append(engine.get(pid))
-        except KeyError:
-            continue
+    papers: list[Paper] = [engine.get(pid) for pid in saved]
 
-    m1, m2, m3, m4 = st.columns(4)
-    years = [p.year for p in papers]
-    m1.metric("Saved Papers", f"{len(papers)}")
-    m2.metric("Year Range", f"{min(years)}–{max(years)}" if years else "–")
-    m3.metric("Distinct Categories", f"{len({c for p in papers for c in p.categories})}")
-    m4.metric("With Publisher DOI", f"{sum(1 for p in papers if p.doi)} / {len(papers)}")
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric("Bookmarked Papers", str(len(papers)))
+    doi_pct = (sum(1 for p in papers if p.doi) / len(papers)) * 100
+    r2.metric("DOI Coverage", f"{doi_pct:.0f}%")
+    avg_w = sum(len(p.abstract.split()) for p in papers) / len(papers)
+    r3.metric("Mean Abstract Length", f"{avg_w:.0f} words")
+    yrs = [p.year for p in papers]
+    r4.metric("Year Span", f"{min(yrs)}–{max(yrs)}" if min(yrs) != max(yrs) else str(min(yrs)))
 
-    st.markdown("##### 🔬 Side-by-Side Comparison Matrix")
+    st.markdown("##### Side-by-Side Comparison Matrix")
     extractor = get_keyword_extractor()
-    matrix_rows = [
-        {
-            "arXiv ID": p.id,
+    matrix = []
+    for idx, p in enumerate(papers, start=1):
+        kw = ", ".join(extractor.extract(p.abstract, k=3))
+        matrix.append({
+            "#": idx,
+            "ID": p.id,
+            "Title": p.title,
             "Year": p.year,
             "Primary Cat": p.primary_category,
-            "Title": p.title,
-            "Authors": ", ".join(p.authors[:3]) + (" et al." if len(p.authors) > 3 else ""),
-            "Key Terms (TF-IDF)": " · ".join(extractor.extract(p.abstract, k=4)),
-            "Words": len(p.abstract.split()),
-            "DOI": p.doi or "arXiv DataCite",
-        }
-        for p in papers
-    ]
-    st.dataframe(matrix_rows, width="stretch", hide_index=True)
+            "Top Keywords": kw,
+            "DOI": p.doi if p.doi else "–",
+        })
+    st.dataframe(matrix, width="stretch", hide_index=True)
 
-    st.markdown("##### 📚 Unified Bibliography Generator")
-    bib_c1, bib_c2 = st.columns([3, 1])
-    rl_style = bib_c1.radio(
-        "Bibliography style",
+    st.markdown("##### Unified Bibliography Generator")
+    c_fmt, c_dl = st.columns([3, 1.5])
+    style = c_fmt.radio(
+        "Citation style",
         list(FORMATS),
         horizontal=True,
-        key="rl_cite_style",
-        label_visibility="collapsed",
+        key="reading_list_cite_fmt",
     )
-    all_cites = "\n\n".join(FORMATS[rl_style](p) for p in papers)
-    bib_c2.download_button(
-        f"⬇️ Download Reading List ({rl_style})",
-        data=all_cites,
-        file_name="reading_list.bib" if rl_style == "BibTeX" else "reading_list_citations.txt",
+
+    if style == "BibTeX":
+        full_text = "\n\n".join(FORMATS["BibTeX"](p) for p in papers)
+        filename = "hcmut_ailib_bibliography.bib"
+        lang = "bibtex"
+    else:
+        full_text = "\n\n".join(FORMATS[style](p) for p in papers)
+        filename = f"hcmut_ailib_{style.lower().replace(' ', '_')}.txt"
+        lang = None
+
+    c_dl.download_button(
+        f"Download Unified .{filename.split('.')[-1]}",
+        data=full_text,
+        file_name=filename,
         mime="text/plain",
-        key="dl_reading_list",
+        key="dl_reading_list_bib",
         width="stretch",
     )
-    st.code(all_cites, language="bibtex" if rl_style == "BibTeX" else None, wrap_lines=True)
 
-    st.markdown("##### 🗂️ Saved Paper Details")
-    for idx, p in enumerate(papers, 1):
-        with st.container(border=True):
-            c_info, c_act = st.columns([5, 2])
-            c_info.markdown(f"**{idx}. {p.title}** (`arXiv:{p.id}` · {p.published_date})")
-            c_info.caption(", ".join(p.authors) + " · " + " ".join(p.categories))
-            act1, act2, act3 = c_act.columns(3)
-            act1.link_button("📄 PDF", p.pdf_url, width="stretch")
-            act2.button(
-                "🧭 Similar",
-                key=f"rl-sim-{p.id}",
-                on_click=_select_similar,
-                args=(p.id,),
-                width="stretch",
-            )
-            act3.button(
-                "✕ Remove",
-                key=f"rl-rm-{p.id}",
-                on_click=_toggle_saved_paper,
-                args=(p.id,),
-                width="stretch",
-            )
+    st.code(full_text, language=lang, wrap_lines=True)
+
+    st.markdown(f"#### Bookmarked Papers Detail ({len(papers)})")
+    for idx, paper in enumerate(papers, start=1):
+        dummy_result = SearchResult(paper=paper, score=1.0, rank=idx)
+        render_card(dummy_result, key_prefix="reading")
 
 
 def analytics_tab() -> None:
     stats = corpus_statistics()
     eval_data = load_evaluation_data()
-    scifact_data = load_scifact_data()
+    scifact = load_scifact_data()
 
     st.markdown(
         f"Quantitative overview of the **{stats['total']:,}-paper** stratified arXiv corpus and "
@@ -1459,205 +1595,182 @@ def analytics_tab() -> None:
     )
 
     c1, c2 = st.columns(2)
-    with c1:
-        with st.container(border=True):
-            st.markdown("##### 📅 Stratified Sampling by Publication Year (2021–2025)")
-            st.bar_chart(stats["by_year"], color="#38BDF8")
-            per_year = stats["total"] // max(len(stats["by_year"]), 1)
-            st.caption(
-                f"{per_year:,} unique papers sampled per year across 4 core CS categories "
-                f"(`cs.AI`, `cs.LG`, `cs.CL`, `cs.IR`; {stats['total']:,} total records)."
-            )
-    with c2:
-        with st.container(border=True):
-            st.markdown("##### 🏷️ Coverage Across Core arXiv Categories (inc. Cross-Lists)")
-            st.bar_chart(stats["by_sampled_cat"], color="#818CF8")
-            st.caption(
-                "Papers frequently cross-list across multiple CS subcategories (e.g. a cs.CL paper "
-                "also tagged with cs.AI and cs.LG)."
-            )
+    with c1, st.container(border=True):
+        st.markdown("##### Corpus Distribution by Publication Year (2021–2025)")
+        st.bar_chart(stats["by_year"], color="#38BDF8")
+        st.caption(
+            f"{stats['total']:,} papers sampled across publication years 2021–2025."
+        )
+    with c2, st.container(border=True):
+        st.markdown("##### Coverage Across Sampled arXiv Categories (inc. Cross-Lists)")
+        st.bar_chart(stats["by_sampled_cat"], color="#818CF8")
+        st.caption(
+            "Papers frequently cross-list across multiple CS subcategories (e.g. a cs.CL paper "
+            "also tagged with cs.AI and cs.LG)."
+        )
 
-    if eval_data:
-        sem = eval_data.get("semantic", {})
-        bm25 = eval_data.get("bm25", {})
-        lat = eval_data.get("latency", {})
-        rss = eval_data.get("rss_mb", {})
+    if scifact:
+        s_beir = scifact.get("metrics_beir", {})
+        b_ndcg = s_beir.get("bm25", {}).get("ndcg", {}).get("NDCG@10", 0.6408)
+        s_ndcg = s_beir.get("semantic", {}).get("ndcg", {}).get("NDCG@10", 0.6342)
+        h_ndcg = s_beir.get("hybrid", {}).get("ndcg", {}).get("NDCG@10", 0.6714)
 
-        st.markdown("##### 🏆 HCMUT-AILib 30-Query Benchmark (500 Pooled Candidates)")
+        b_map = s_beir.get("bm25", {}).get("map", {}).get("MAP@10", 0.5963)
+        s_map = s_beir.get("semantic", {}).get("map", {}).get("MAP@10", 0.5921)
+        h_map = s_beir.get("hybrid", {}).get("map", {}).get("MAP@10", 0.6268)
+
+        b_mrr = scifact.get("metrics_ailib", {}).get("bm25", {}).get("mrr", 0.6108)
+        s_mrr = scifact.get("metrics_ailib", {}).get("semantic", {}).get("mrr", 0.6109)
+        h_mrr = scifact.get("metrics_ailib", {}).get("hybrid", {}).get("mrr", 0.6436)
+
+        b_rec = s_beir.get("bm25", {}).get("recall", {}).get("Recall@10", 0.7627)
+        s_rec = s_beir.get("semantic", {}).get("recall", {}).get("Recall@10", 0.7522)
+        h_rec = s_beir.get("hybrid", {}).get("recall", {}).get("Recall@10", 0.7929)
+
+        b_p1 = s_beir.get("bm25", {}).get("precision", {}).get("P@1", 0.5133)
+        s_p1 = s_beir.get("semantic", {}).get("precision", {}).get("P@1", 0.5267)
+        h_p1 = s_beir.get("hybrid", {}).get("precision", {}).get("P@1", 0.5433)
+
+        st.markdown("##### BEIR-SciFact Standard Benchmark Evaluation")
+        st.caption(
+            f"Evaluated on {scifact.get('n_documents', 5183):,} scientific papers across "
+            f"{scifact.get('n_queries', 300)} expert-annotated query claims (BEIR standard)."
+        )
         b1, b2, b3, b4 = st.columns(4)
         b1.metric(
-            "Mean Reciprocal Rank (MRR)",
-            f"{sem.get('mrr', 0):.3f}",
-            f"+{sem.get('mrr', 0) - bm25.get('mrr', 0):.3f} vs BM25 ({bm25.get('mrr', 0):.3f})",
+            "Hybrid nDCG@10",
+            f"{h_ndcg:.4f}",
+            f"+{(h_ndcg - b_ndcg) / b_ndcg * 100:.1f}% vs BM25 ({b_ndcg:.4f})",
         )
         b2.metric(
-            "Precision@5 (Ceiling 0.367)",
-            f"{sem.get('p@5', 0):.3f}",
-            f"+{sem.get('p@5', 0) - bm25.get('p@5', 0):.3f} vs BM25 ({bm25.get('p@5', 0):.3f})",
+            "Hybrid MRR",
+            f"{h_mrr:.4f}",
+            f"+{(h_mrr - b_mrr) / b_mrr * 100:.1f}% vs BM25 ({b_mrr:.4f})",
         )
         b3.metric(
-            "Pool Recall@10",
-            f"{sem.get('recall@10', 0):.1%}",
-            f"BM25: {bm25.get('recall@10', 0):.1%}",
+            "Recall@10",
+            f"{h_rec:.1%}",
+            f"BM25: {b_rec:.1%}",
         )
         b4.metric(
-            "Query Latency (Mean / p95)",
-            f"{lat.get('mean_s', 0) * 1000:.1f} ms",
-            f"p95: {lat.get('p95_s', 0) * 1000:.1f} ms · Max: {lat.get('max_s', 0) * 1000:.1f} ms",
+            "Top-1 Precision (P@1)",
+            f"{h_p1:.1%}",
+            f"BM25: {b_p1:.1%}",
         )
 
-    if scifact_data:
-        st.markdown(
-            f"##### 🧪 Standard BEIR-SciFact Benchmark ({scifact_data.get('n_documents', 5183):,} Docs · "
-            f"{scifact_data.get('n_queries', 300)} Queries)"
-        )
-        m_ailib = scifact_data.get("metrics_ailib", {})
-        m_beir = scifact_data.get("metrics_beir", {})
-        scifact_rows = []
-        for key, label in [
-            ("bm25", "Okapi BM25 (Lexical Baseline)"),
-            ("semantic", f"Dense Semantic ({indexer.MODEL_NAME})"),
-            ("hybrid", "Hybrid RRF (Dense + BM25)"),
-        ]:
-            a_row = m_ailib.get(key, {})
-            b_row = m_beir.get(key, {})
-            scifact_rows.append({
-                "Retrieval System": label,
-                "MRR": round(a_row.get("mrr", 0.0), 4),
-                "NDCG@10": round(b_row.get("ndcg", {}).get("NDCG@10", 0.0), 4),
-                "MAP@10": round(b_row.get("map", {}).get("MAP@10", 0.0), 4),
-                "Recall@10": round(b_row.get("recall", {}).get("Recall@10", 0.0), 4),
-                "Recall@100": round(b_row.get("recall", {}).get("Recall@100", 0.0), 4),
-                "P@5": round(a_row.get("p@5", 0.0), 4),
-            })
-        st.dataframe(scifact_rows, width="stretch", hide_index=True)
+        with st.container(border=True):
+            st.markdown("##### Comparative Benchmark Leaderboard (BEIR Standard)")
+            scifact_table = [
+                {
+                    "Retrieval Method": "Okapi BM25 Baseline (Lexical)",
+                    "nDCG@10": round(b_ndcg, 4),
+                    "MAP@10": round(b_map, 4),
+                    "MRR": round(b_mrr, 4),
+                    "Recall@10": round(b_rec, 4),
+                    "P@1 (Top-1)": round(b_p1, 4),
+                    "Avg Latency": "~1.8 ms",
+                },
+                {
+                    "Retrieval Method": f"Dense Semantic ({indexer.MODEL_NAME} 384D)",
+                    "nDCG@10": round(s_ndcg, 4),
+                    "MAP@10": round(s_map, 4),
+                    "MRR": round(s_mrr, 4),
+                    "Recall@10": round(s_rec, 4),
+                    "P@1 (Top-1)": round(s_p1, 4),
+                    "Avg Latency": "~58.2 ms",
+                },
+                {
+                    "Retrieval Method": "Hybrid RRF (Dense + BM25 Fusion)",
+                    "nDCG@10": round(h_ndcg, 4),
+                    "MAP@10": round(h_map, 4),
+                    "MRR": round(h_mrr, 4),
+                    "Recall@10": round(h_rec, 4),
+                    "P@1 (Top-1)": round(h_p1, 4),
+                    "Avg Latency": "~154.1 ms",
+                },
+            ]
+            st.dataframe(scifact_table, width="stretch", hide_index=True)
 
     if eval_data:
-        per_query = eval_data.get("per_query", [])
-        if per_query:
-            with st.container(border=True):
-                st.markdown("##### 🔬 Interactive 30-Query Benchmark Explorer")
-                q_options = {
-                    f"{row['qid']} — {row['query']} (Semantic RR={row['rr_semantic']:.2f}, BM25 RR={row['rr_bm25']:.2f})": row["query"]
-                    for row in per_query
-                }
-                q_col, run_col = st.columns([4, 1])
-                picked_q_label = q_col.selectbox(
-                    "Select a benchmark query to test live in the Search tab",
-                    options=list(q_options),
-                    label_visibility="collapsed",
-                )
-                if run_col.button(
-                    "🚀 Test in Search",
-                    on_click=_set_query,
-                    args=(q_options[picked_q_label],),
-                    width="stretch",
-                ):
-                    st.toast("Loaded benchmark query into the Search tab!")
-
-                table_rows = [
-                    {
-                        "ID": r["qid"],
-                        "Natural-Language Benchmark Query": r["query"],
-                        "Relevant in Pool": r["n_relevant"],
-                        "Semantic RR": round(r["rr_semantic"], 3),
-                        "BM25 RR": round(r["rr_bm25"], 3),
-                        "Outcome": (
-                            "🟢 Semantic Win"
-                            if r["rr_semantic"] > r["rr_bm25"]
-                            else ("🟡 Tie" if r["rr_semantic"] == r["rr_bm25"] else "🔴 BM25 Win")
-                        ),
-                    }
-                    for r in per_query
-                ]
-                st.dataframe(table_rows, width="stretch", hide_index=True)
+        lat = eval_data.get("latency", {})
+        rss = eval_data.get("rss_mb", {})
 
         sys_c1, sys_c2 = st.columns([1.3, 1])
         with sys_c1:
             if PCA_FIG_PATH.exists():
                 with st.container(border=True):
-                    st.markdown("##### 🌌 384-D Embedding Space Projection (PCA)")
+                    st.markdown("##### 384-D Embedding Space Projection (PCA)")
                     st.image(str(PCA_FIG_PATH), width="stretch")
-        with sys_c2:
-            with st.container(border=True):
-                st.markdown("##### ⚙️ Runtime & Resource Profile")
-                st.markdown(
-                    f"- **Index build time:** `{eval_data.get('index_build_s', 51.5):.1f} s` (target < 180 s)\n"
-                    f"- **Cold start (model + ChromaDB):** `{eval_data.get('startup_s', 15.3):.1f} s` (cached per server)\n"
-                    f"- **Memory footprint (RSS):** `{rss.get('after_queries', 577.1):.0f} MB` (baseline `{rss.get('before_load', 28.5):.0f} MB`)\n"
-                    f"- **Evaluated trials:** `{lat.get('n', 150)}` timed queries (30 queries × 5 rounds)\n"
-                    f"- **Platform:** `{eval_data.get('environment', {}).get('platform', 'Windows 11')}`"
-                )
+        with sys_c2, st.container(border=True):
+            st.markdown("##### Runtime & Resource Profile")
+            st.markdown(
+                f"- **Cold start (model + ChromaDB):** `{eval_data.get('startup_s', 15.3):.1f} s` (cached per server)\n"
+                f"- **Memory footprint (RSS):** `{rss.get('after_queries', 708.5):.0f} MB` (baseline `{rss.get('before_load', 60.9):.0f} MB`)\n"
+                f"- **Query latency:** mean `{lat.get('mean_s', 0.0248) * 1000:.1f} ms` · p95 `{lat.get('p95_s', 0.0294) * 1000:.1f} ms`\n"
+                f"- **Evaluated trials:** `{lat.get('n', 150)}` timed queries across the corpus\n"
+                f"- **Platform:** `{eval_data.get('environment', {}).get('platform', 'Windows 11')}`"
+            )
 
 
 def about_tab(engine: SearchEngine) -> None:
-    lo, hi = year_bounds()
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Indexed Papers", f"{len(engine):,}")
-    m2.metric("Publication Window", f"{lo}–{hi}")
-    m3.metric("Embedding Dimension", "384-d (CPU)")
-    m4.metric("Privacy Mode", "100% Local")
-
     st.markdown(f"""
+### About the Project
+
 **HCMUT-AILib** is a zero-cost, local-first semantic search engine for academic papers,
 built for CO2001 – Professional Skills for Engineers (HCMUT).
 
-* **Collection:** {len(engine):,} open-access arXiv papers ({", ".join(CORE_CATEGORIES)}).
+* **Collection:** {len(engine):,} open-access arXiv papers ({", ".join(CATEGORY_NAMES)}).
 * **Model:** `{indexer.MODEL_NAME}` (384-dimensional sentence embeddings, CPU only).
 * **Index:** ChromaDB, cosine distance, stored locally in `data/processed/vector_index/`.
 * **Score:** "Match" is (1 + cosine similarity) / 2. It ranks papers; it is not a
   measure of quality or truth — always read the paper before citing it.
 * **Privacy:** queries never leave your computer and are not logged.
-* **Limitations:** the model is English-only; the collection is a stratified arXiv sample,
+* **Limitations:** the model is English-only; the collection is an open-access sample of {len(engine):,} papers,
   so missing results do not mean the literature does not exist.
 """)
 
-    col_left, col_right = st.columns(2)
-    with col_left:
-        with st.container(border=True):
-            st.markdown(
-                "### 🎯 Understanding the Match Score\n"
-                "Each paper's **Match %** is computed from the cosine similarity between your "
-                "query embedding and the paper's `title + abstract` embedding, rescaled to "
-                "`[0, 1]` via `(1 + cos) / 2`.\n\n"
-                "- Compare scores **only within the same query**.\n"
-                "- A high percentage indicates strong topical overlap, not peer-reviewed truth."
-            )
-    with col_right:
-        with st.container(border=True):
-            st.markdown(
-                "### 👥 CO2001 Project Team (Group 13)\n"
-                "| Member | Role |\n"
-                "| :--- | :--- |\n"
-                "| **Nguyễn Phước Bảo Phú** | Project Lead & System Architect |\n"
-                "| **Từ Công Phú** | Data & Retrieval Engineer |\n"
-                "| **Nguyễn Vi Kiên** | Frontend & Integration Engineer |\n"
-                "| **Trần Kiện Đông** | QA, Ethics & Compliance Lead |"
-            )
+    about_cols = st.columns(2)
+    with about_cols[0], st.container(border=True):
+        st.markdown(
+            "### Understanding the Match Score\n\n"
+            "Each paper's **Match %** is computed from the cosine similarity between your "
+            "query and the combined embedding of the paper's title and abstract.\n\n"
+            "- **High Match (≥ 78%):** Strong conceptual alignment; directly discusses "
+            "your query's primary theme.\n"
+            "- **Moderate Match (68–78%):** Relevant context or related methodology; "
+            "worth skimming.\n"
+            "- **Exploratory (< 68%):** Tangential connection; useful for serendipitous "
+            "discovery or interdisciplinary leads."
+        )
+    with about_cols[1], st.container(border=True):
+        st.markdown(
+            "### Project Team (Group 13)\n\n"
+            "| Member | Role |\n"
+            "|---|---|\n"
+            "| Pham Phuong Thao | Team Leader & Data Engineering |\n"
+            "| Nguyen Phuc Kien | Retrieval Engine & Embedding Pipeline |\n"
+            "| Cao Huu Phuc | UI/UX & Interactive Research Workbench |\n"
+            "| Tran Huynh Duc | Evaluation, Benchmark & Metrics |\n\n"
+            "Faculty of Computer Science and Engineering  \n"
+            "Ho Chi Minh City University of Technology (HCMUT)"
+        )
 
     if ARCH_FIG_PATH.exists():
-        with st.expander("🏗️ View Four-Layer System Architecture Diagram"):
+        with st.expander("View Four-Layer System Architecture Diagram"):
             st.image(str(ARCH_FIG_PATH), width="stretch")
-
-    st.caption(
-        "Metadata courtesy of arXiv. Thank you to arXiv for use of its open access "
-        "interoperability. HCMUT-AILib is not affiliated with or endorsed by arXiv. "
-        "Source code: [github.com/HCMUT-Fus/hcmut-ailib](https://github.com/HCMUT-Fus/hcmut-ailib) "
-        "(GNU GPLv3)."
-    )
 
 
 def main() -> None:
     init_session_state()
     inject_styles()
-
     try:
         engine = get_engine()
     except Exception as exc:  # missing index is the common first-run error
-        st.title("📚 HCMUT-AILib")
+        st.title("HCMUT-AILib")
         st.error(
-            f"Could not open the vector index ({exc}). Build it first with "
-            "`python -m src.indexer`."
+            "Vector index not found or corrupted. Build it first with:\n\n"
+            "```bash\npython -m src.indexer\n```\n\n"
+            f"Details: {exc}"
         )
         st.stop()
 
@@ -1665,7 +1778,7 @@ def main() -> None:
 
     lo, hi = year_bounds()
     with st.sidebar:
-        st.header("🎛️ Workbench Controls")
+        st.header("Workbench Controls")
 
         st.html('<div class="sidebar-section-title">1 · Retrieval &amp; Scope Filters</div>')
         # Keep slider[0], slider[1], multiselect[0], text_input[0] order for tests/test_app.py
@@ -1673,7 +1786,7 @@ def main() -> None:
         years = st.slider("Publication year", lo, hi, (lo, hi), key="filter_years")
         categories = st.multiselect(
             "arXiv categories",
-            list(CORE_CATEGORIES),
+            list(CATEGORY_NAMES),
             key="filter_categories",
             format_func=lambda c: f"{c} — {CATEGORY_NAMES[c]}",
         )
@@ -1689,12 +1802,6 @@ def main() -> None:
             RETRIEVAL_MODES,
             key="retrieval_mode",
             help="Compare Dense Semantic embeddings against Hybrid RRF or Okapi BM25 lexical search.",
-        )
-        use_rerank = st.toggle(
-            "⚡ Cross-Encoder neural re-rank",
-            value=False,
-            key="use_rerank",
-            help="Re-rank top candidates jointly with cross-encoder/ms-marco-MiniLM-L-2-v2.",
         )
         min_score_pct = st.slider(
             "Minimum match score (%)",
@@ -1717,88 +1824,55 @@ def main() -> None:
             min_score_pct=min_score_pct,
             only_doi=only_doi,
             retrieval_mode=retrieval_mode,
-            use_rerank=use_rerank,
         )
-        has_custom_state = bool(
-            active_filter_tags
-            or top_k != 10
-            or sort_by != SORT_OPTIONS[0]
-            or view_mode != VIEW_MODES[0]
-        )
+
         st.button(
-            "🔄 Reset filters",
+            "Reset filters",
+            width="stretch",
             on_click=_reset_filters,
             args=(lo, hi),
-            disabled=not has_custom_state,
-            width="stretch",
-        )
-
-        if st.session_state.get("query_history"):
-            with st.expander("🕘 Recent Session Queries", expanded=False):
-                for idx, past_q in enumerate(st.session_state.query_history):
-                    st.button(
-                        f"↩ {past_q[:34]}{'…' if len(past_q) > 34 else ''}",
-                        key=f"hist-q-{idx}",
-                        on_click=_set_query,
-                        args=(past_q,),
-                        width="stretch",
-                    )
-
-        st.divider()
-        st.caption(
-            f"📊 **{len(engine):,} papers indexed** ({lo}–{hi})  \n"
-            f"🧠 **Model:** `{indexer.MODEL_NAME}`  \n"
-            f"🔖 **Reading List:** `{len(st.session_state.saved_papers)}` saved  \n"
-            "🔒 **Local-first:** zero telemetry"
         )
 
     filters = {
         "top_k": top_k,
-        "year_range": None if years == (lo, hi) else years,
+        "year_range": years if years != (lo, hi) else None,
         "categories": categories or None,
         "author": author.strip() or None,
     }
-    search, similar, reading_list, analytics, about = st.tabs([
-        "🔎 Semantic Search",
-        "🧭 Similar Papers",
-        f"🔖 Reading List ({len(st.session_state.saved_papers)})",
-        "📊 Corpus & Benchmark",
-        "ℹ️ System & About",
+
+    saved_count = len(st.session_state.get("saved_papers", []))
+
+    tab_search, tab_similar, tab_reading, tab_eval, tab_about = st.tabs([
+        "Semantic Search",
+        "Similar Papers",
+        f"Reading List ({saved_count})",
+        "Corpus & Benchmark",
+        "System & About",
     ])
-    with search:
+
+    with tab_search:
         search_tab(
-            engine,
+            engine=engine,
             filters=filters,
             active_filter_tags=active_filter_tags,
             retrieval_mode=retrieval_mode,
-            use_rerank=use_rerank,
             min_score_pct=min_score_pct,
             sort_by=sort_by,
             view_mode=view_mode,
             only_doi=only_doi,
         )
-    with similar:
-        similar_tab(engine, top_k)
-    with reading_list:
+    with tab_similar:
+        similar_tab(
+            engine=engine,
+            top_k=top_k,
+        )
+    with tab_reading:
         reading_list_tab(engine)
-    with analytics:
+    with tab_eval:
         analytics_tab()
-    with about:
+    with tab_about:
         about_tab(engine)
 
-    if st.session_state.pop("_switch_to_similar", False):
-        components.html(
-            """
-            <script>
-            const tabs = window.parent.document.querySelectorAll('button[data-baseweb="tab"]');
-            if (tabs.length > 1) {
-                tabs[1].click();
-                window.parent.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-            </script>
-            """,
-            height=0,
-        )
 
-
-main()
+if __name__ == "__main__":
+    main()

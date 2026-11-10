@@ -118,7 +118,10 @@ class AuthorIndex:
                 matched = ids_for_token
             else:
                 matched &= ids_for_token
-        return matched or set()
+        if not matched:
+            return set()
+        clean = clean.strip()
+        return {pid for pid in matched if clean in self._id_to_norm_authors[pid]}
 
 
 class SearchEngine:
